@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Home } from "lucide-react";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import { Navbar } from "@/components/Navbar";
 
 const PARTICLES_DATA = [
   { id: 1, left: 16, top: 22, delay: 0, duration: 10 },
@@ -58,6 +59,7 @@ export default function NotFound() {
 
   return (
     <>
+      <Navbar />
       <div className="fixed inset-0 -z-10">
         <DarkVeil />
 
