@@ -1,3 +1,5 @@
+import SkeletonCard from "@/components/ui/SkeletonCard";
+import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
@@ -30,109 +32,44 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
+import dynamic from "next/dynamic";
+import ChartSkeleton from "@/components/ui/ChartSkeleton";
+
+const AttendanceHeatmap = dynamic(
+  () => import("./AttendanceHeatmap"),
+  { ssr: false, loading: () => <ChartSkeleton variant="heatmap" /> }
+);
+
 import { useAuth } from "@/hooks/useAuth";
+
 import AttendanceChart from "./AttendanceChart";
+
+import { weeklySchedule, mockRecentActivity } from "@/constants/mockData";
+import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 const StudentDashboard = () => {
+  const [loading, setLoading] = useState(true);
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceStatus, setAttendanceStatus] = useState("pending");
   const [todayClasses, setTodayClasses] = useState([]);
-  const [attendanceStats, setAttendanceStats] = useState({
-    present: 85,
-    absent: 12,
-    late: 8,
-    percentage: 87.2,
-  });
+
   const [recentActivity, setRecentActivity] = useState([]);
   const [upcomingClass, setUpcomingClass] = useState(null);
   const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
+
   const { user } = useAuth();
 
-  // Mock schedule data
-  const weeklySchedule = {
-    Monday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        teacher: "Dr. Smith",
-        room: "Lab-1",
-      },
-      {
-        time: "10:45-12:15",
-        subject: "Mathematics",
-        teacher: "Prof. Johnson",
-        room: "Room-205",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Database Systems",
-        teacher: "Dr. Brown",
-        room: "Lab-2",
-      },
-    ],
-    Tuesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Web Development",
-        teacher: "Ms. Wilson",
-        room: "Lab-3",
-      },
-      {
-        time: "10:45-12:15",
-        subject: "Computer Networks",
-        teacher: "Dr. Davis",
-        room: "Room-301",
-      },
-    ],
-    Wednesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Machine Learning",
-        teacher: "Prof. Lee",
-        room: "Lab-1",
-      },
-      {
-        time: "10:45-12:15",
-        subject: "Software Engineering",
-        teacher: "Dr. Miller",
-        room: "Room-204",
-      },
-    ],
-    Thursday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        teacher: "Dr. Smith",
-        room: "Lab-1",
-      },
-      {
-        time: "10:45-12:15",
-        subject: "Mobile Development",
-        teacher: "Ms. Garcia",
-        room: "Lab-4",
-      },
-    ],
-    Friday: [
-      {
-        time: "09:00-10:30",
-        subject: "AI Ethics",
-        teacher: "Prof. Chen",
-        room: "Room-101",
-      },
-      {
-        time: "10:45-12:15",
-        subject: "Project Work",
-        teacher: "Dr. Kumar",
-        room: "Lab-2",
-      },
-    ],
-  };
+  // Mock schedule data is now imported from @/constants/mockData
 
   useEffect(() => {
+    const loadingTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
+
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
 
-      // Check if it's attendance window (9:00-9:10 AM on weekdays)
       const hour = now.getHours();
       const minute = now.getMinutes();
       const day = now.getDay();
@@ -142,7 +79,6 @@ const StudentDashboard = () => {
 
       setIsAttendanceWindow(isWeekday && isAttendanceTime);
 
-      // Get today's classes
       const dayNames = [
         "Sunday",
         "Monday",
@@ -152,67 +88,49 @@ const StudentDashboard = () => {
         "Friday",
         "Saturday",
       ];
+
       const today = dayNames[day];
+
       setTodayClasses(weeklySchedule[today] || []);
 
-      // Find upcoming class
       if (weeklySchedule[today]) {
         const upcoming = weeklySchedule[today].find((cls) => {
           const [startTime] = cls.time.split("-");
           const [classHour, classMinute] = startTime.split(":").map(Number);
+
           return (
-            hour < classHour || (hour === classHour && minute < classMinute)
+            hour < classHour ||
+            (hour === classHour && minute < classMinute)
           );
         });
+
         setUpcomingClass(upcoming);
       }
     }, 1000);
 
-    // Mock recent activity
-    setRecentActivity([
-      {
-        date: "2024-01-15",
-        subject: "Data Structures",
-        status: "present",
-        time: "09:05",
-      },
-      {
-        date: "2024-01-14",
-        subject: "Mathematics",
-        status: "present",
-        time: "09:02",
-      },
-      {
-        date: "2024-01-13",
-        subject: "Database Systems",
-        status: "late",
-        time: "09:08",
-      },
-      {
-        date: "2024-01-12",
-        subject: "Web Development",
-        status: "present",
-        time: "09:01",
-      },
-      {
-        date: "2024-01-11",
-        subject: "Computer Networks",
-        status: "absent",
-        time: "--",
-      },
-    ]);
+    setRecentActivity(mockRecentActivity);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(loadingTimer);
+    };
   }, []);
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
       case "present":
         return "text-green-400 bg-green-500/10 border-green-500/30";
+
       case "absent":
         return "text-red-400 bg-red-500/10 border-red-500/30";
+
       case "late":
         return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
+
       default:
         return "text-gray-400 bg-gray-500/10 border-gray-500/30";
     }
@@ -676,7 +594,6 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
