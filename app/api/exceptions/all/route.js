@@ -1,7 +1,7 @@
+import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { NextResponse } from "next/server";
 
 export async function GET(request) {
   try {
@@ -11,17 +11,13 @@ export async function GET(request) {
     const authResult = await verifyFirebaseToken(token);
 
     if (!authResult.valid) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: authResult.reason,
-        },
-        { status: 401 }
+      return jsonError(
+        { message: "Unauthorized", reason: authResult.reason },
+        401
       );
     }
 
     const decodedToken = authResult.decodedToken;
-
 
     // Fetch user profile
     const profile = await getUserProfile(decodedToken.uid);
@@ -47,11 +43,16 @@ export async function GET(request) {
 
     const skip = (page - 1) * limit;
 
-    // Search
-    const search = searchParams.get("search") || "";
+    // Search — escape metacharacters and cap length to prevent ReDoS
+    const rawSearch = searchParams.get("search") || "";
+    const search = escapeRegex(rawSearch);
 
-    // Sorting
-    const sortBy = searchParams.get("sortBy") || "createdAt";
+    // Sorting — validate against an explicit allowlist to prevent field-name injection
+    const sortBy = sanitizeSortField(
+      searchParams.get("sortBy"),
+      ALLOWED_SORT_FIELDS,
+      "createdAt"
+    );
 
     const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 

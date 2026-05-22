@@ -11,8 +11,8 @@ import {
   where,
 } from "firebase/firestore";
 
-export function getWeekdaysSinceYearStart() {
-  const start = new Date(new Date().getFullYear(), 0, 1);
+export function getWeekdaysSince(startDate) {
+  const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
   const end = new Date();
   let weekdays = 0;
 
@@ -113,7 +113,16 @@ export const recalculateAttendanceRate = async (userId) => {
 
     const countSnapshot = await getCountFromServer(attendanceQuery);
     const presentDays = countSnapshot.data().count;
-    const totalDays = getWeekdaysSinceYearStart();
+
+    const userSnap = await getDoc(doc(db, "users", userId));
+    let startDate = new Date(new Date().getFullYear(), 0, 1);
+    if (userSnap.exists() && userSnap.data().createdAt) {
+      // createdAt might be a Firestore Timestamp or a string
+      const createdAt = userSnap.data().createdAt;
+      startDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+    }
+
+    const totalDays = getWeekdaysSince(startDate);
     const rate = Math.min(100, Math.round((presentDays / totalDays) * 100));
 
     await updateDoc(statsRef, {

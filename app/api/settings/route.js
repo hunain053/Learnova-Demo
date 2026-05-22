@@ -96,11 +96,16 @@ export async function PATCH(request) {
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-   const authResult = await verifyFirebaseToken(token);
+    const authResult = await verifyFirebaseToken(token);
 
-    if (!decodedToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!authResult.valid) {
+      return jsonError(
+        { message: "Unauthorized", reason: authResult.reason },
+        401
+      );
     }
+
+    const decodedToken = authResult.decodedToken;
 
     const body = await request.json();
     const parsed = settingsSchema.safeParse(body);
@@ -115,8 +120,8 @@ export async function PATCH(request) {
     const { userId: bodyUserId, ...settings } = parsed.data;
 
     let targetUserId = decodedToken.uid;
-    let isOperatorAdmin = false;
 
+    // Check if updating another user's settings (requires admin privilege)
     if (bodyUserId && bodyUserId !== decodedToken.uid) {
       const profile = await getUserProfile(decodedToken.uid);
       if (!profile || profile.role !== "admin") {
@@ -129,7 +134,6 @@ export async function PATCH(request) {
         );
       }
       targetUserId = bodyUserId;
-      isOperatorAdmin = true;
     }
 
     const db = await connectDb();
