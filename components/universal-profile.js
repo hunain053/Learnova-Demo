@@ -62,11 +62,13 @@ export default function UniversalProfile() {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
+    let active = true;
     const fetchUserData = async () => {
       if (!user?.uid) return;
       try {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
+        if (!active) return;
         if (userSnap.exists()) {
           const data = userSnap.data();
           setUserData(data); //to save the full profile data
@@ -76,6 +78,7 @@ export default function UniversalProfile() {
         // Fetch dashboard statistics from the userStats collection
         const statsRef = doc(db, "userStats", user.uid);
         const statsSnap = await getDoc(statsRef);
+        if (!active) return;
         if (statsSnap.exists()) {
           setStats(statsSnap.data());
         }
@@ -84,6 +87,9 @@ export default function UniversalProfile() {
       }
     };
     fetchUserData();
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   const [formData, setFormData] = useState({
