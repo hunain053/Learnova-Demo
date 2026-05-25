@@ -1,10 +1,17 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
+
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "framer-motion";
+
 import {
   Menu,
   X,
@@ -18,92 +25,127 @@ import {
   Home,
   Mail,
   Bell,
-  UserCheck,
   Sun,
   Moon,
   Keyboard,
+  Languages,
+  Search,
+  MessageSquareWarning,
 } from "lucide-react";
-import { useAuthContext } from "@/contexts/AuthContext";
-import Image from "next/image";
+
+const languageMap = {
+  English: "en",
+  Español: "es",
+  Français: "fr",
+  Deutsch: "de",
+  "हिन्दी": "hi",
+};
+
+// ── Animation Variants ──────────────────────────────────────────────────────
+
+const dropdownVariants = {
+  hidden: { opacity: 0, y: -8, scale: 0.96 },
+  visible: {
+    opacity: 1, y: 0, scale: 1,
+    transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] },
+  },
+  exit: {
+    opacity: 0, y: -6, scale: 0.96,
+    transition: { duration: 0.13, ease: "easeIn" },
+  },
+};
+
+const mobileDrawerVariants = {
+  hidden: { opacity: 0, x: 40, scale: 0.97 },
+  visible: {
+    opacity: 1, x: 0, scale: 1,
+    transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+  },
+  exit: {
+    opacity: 0, x: 30, scale: 0.97,
+    transition: { duration: 0.15, ease: "easeIn" },
+  },
+};
+
+const staggerContainer = {
+  visible: { transition: { staggerChildren: 0.045, delayChildren: 0.05 } },
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.2 } },
+};
+
+// ── NavLink with animated active pill ───────────────────────────────────────
+
+function NavLink({ href, label, isActive }) {
+  return (
+    <Link
+      href={href}
+      className="relative text-sm font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors duration-200 group"
+    >
+      {isActive && (
+        <motion.span
+          layoutId="nav-active-pill"
+          className="absolute inset-0 rounded-xl bg-blue-600/10 dark:bg-blue-500/15 border border-blue-500/20"
+          transition={{ type: "spring", bounce: 0.2, duration: 0.45 }}
+        />
+      )}
+      <span className="absolute inset-0 rounded-xl bg-zinc-200/0 group-hover:bg-zinc-200/60 dark:group-hover:bg-white/5 transition-colors duration-200" />
+      <span className={`relative z-10 ${
+        isActive
+          ? "text-blue-600 dark:text-blue-400"
+          : "text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-50"
+      }`}>
+        {label}
+      </span>
+      <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-[3px] rounded-full bg-blue-500 transition-all duration-200 ${
+        isActive ? "w-4 opacity-100" : "w-0 opacity-0 group-hover:w-2 group-hover:opacity-40"
+      }`} />
+    </Link>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────────────
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState("English");
+  const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Hook Integration: Connects actual hooks & destructured operations
-  const { 
-    notifications, 
-    unreadCount, 
-    markAsRead, 
-    markAllAsRead 
-  } = useNotifications();
-
-  const { user, userProfile, signOut, isAuthenticated } = useAuthContext();
+  const { i18n } = useTranslation();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { user, userProfile, signOut, isAuthenticated, loading } = useAuthContext();
 
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
+  const langRef = useRef(null);
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [prefersDark, setPrefersDark] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light") return false;
-      if (saved === "dark") return true;
-      return (
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      );
-    } catch (e) {
-      return null;
-    }
-  });
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
+  const isDark = (mounted ? resolvedTheme : null) === "dark";
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    setMounted(true);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Detect system preference on mount so initial render matches user's OS
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const update = (e) => setPrefersDark(e.matches);
-      if (mq.addEventListener) mq.addEventListener("change", update);
-      else mq.addListener && mq.addListener(update);
-      return () => {
-        if (mq.removeEventListener) mq.removeEventListener("change", update);
-        else mq.removeListener && mq.removeListener(update);
-      };
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
-  const scrollProgressValue = Number.isFinite(scrollProgress) ? scrollProgress : 0;
-
-  // Scroll Effect
-  useEffect(() => {
-    const handleScroll = () => {  
-      const progress = Math.min(window.scrollY / 100, 1);
-      setScrollProgress(progress);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Close dropdown on outside click
-  const handleClickOutside = useCallback((event) => {
-    if (
-      dropdownRef.current &&
-      event.target &&
-      !dropdownRef.current.contains(event.target)
-    ) {
+  const handleClickOutside = useCallback((e) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
       setIsDropdownOpen(false);
+    }
+    if (notifRef.current && !notifRef.current.contains(e.target)) {
       setIsNotificationOpen(false);
+    }
+    if (langRef.current && !langRef.current.contains(e.target)) {
+      setIsLangOpen(false);
     }
   }, []);
 
@@ -112,42 +154,31 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [handleClickOutside]);
 
-  // ESC Key Support
   useEffect(() => {
-    const close = () => {
-      setIsDropdownOpen(false);
-      setIsNotificationOpen(false);
-      setIsMenuOpen(false);
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setIsDropdownOpen(false);
+        setIsNotificationOpen(false);
+        setIsMenuOpen(false);
+        setIsLangOpen(false);
+      }
     };
-    const handleEscape = (event) => {
-      if (event.key === "Escape") close();
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    window.addEventListener("learnova:escape", close);
-
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("learnova:escape", close);
-    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Prevent body scroll
   useEffect(() => {
-    if (isMenuOpen) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
-    }
+    document.body.classList.toggle("overflow-hidden", isMenuOpen);
     return () => document.body.classList.remove("overflow-hidden");
   }, [isMenuOpen]);
 
-  // Close menus on route change
   useEffect(() => {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
-    setIsNotificationOpen(false);
+    setIsLangOpen(false);
   }, [pathname]);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
@@ -155,15 +186,16 @@ export function Navbar() {
     await signOut();
   };
 
-  // Helpers
+  const handleLangSelect = (lang) => {
+    setCurrentLang(lang);
+    setIsLangOpen(false);
+    setIsMenuOpen(false);
+    if (i18n?.changeLanguage) i18n.changeLanguage(languageMap[lang]);
+  };
+
   const getUserInitials = (name) => {
     if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
   const getUserDisplayName = () => {
@@ -181,27 +213,30 @@ export function Navbar() {
   };
 
   const getDashboardLink = () => {
-    if (!userProfile?.role) return "/profile";
-    switch (userProfile.role) {
-      case "student": return "/student/dashboard";
-      case "teacher": return "/teacher/dashboard";
+    switch (userProfile?.role) {
+      case "student":   return "/student/dashboard";
+      case "teacher":   return "/teacher/dashboard";
       case "institute": return "/institute/dashboard";
-      case "admin": return "/admin/dashboard";
-      default: return "/profile";
+      case "admin":     return "/admin/dashboard";
+      default:          return "/profile";
     }
   };
 
   const navigationItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/activity", label: "Activities", icon: Activity },
-    { href: "/contact", label: "Contact", icon: Mail },
+    { href: "/",            label: "Home",       icon: Home },
+    { href: "/productivity",label: "Focus",      icon: Sparkles },
+    { href: "/activity",    label: "Activities", icon: Activity },
+    { href: "/complaints",  label: "Complaints", icon: MessageSquareWarning },
+    { href: "/contact",     label: "Contact",    icon: Mail },
   ];
 
   const userMenuItems = [
-    { href: "/profile", icon: User, label: "Profile", key: "profile" },
-    { href: getDashboardLink(), icon: Activity, label: "Dashboard", key: "dashboard" },
-    { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
+    { href: "/profile",       icon: User,     label: "Profile",   key: "profile" },
+    { href: getDashboardLink(),icon: Activity, label: "Dashboard", key: "dashboard" },
+    { href: "/settings",      icon: Settings, label: "Settings",  key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
+
+  const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
 
   const handleImageError = (e) => {
     const img = e.target;
@@ -212,422 +247,557 @@ export function Navbar() {
     }
   };
 
+  // ── Shared style helpers ────────────────────────────────────────────────────
+
+  const navStyle = {
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    backgroundColor: isDark
+      ? scrolled ? "rgba(9,9,11,0.90)" : "rgba(9,9,11,0.65)"
+      : scrolled ? "rgba(255,255,255,0.94)" : "rgba(255,255,255,0.72)",
+    borderBottom: isDark
+      ? scrolled ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.05)"
+      : scrolled ? "1px solid rgba(0,0,0,0.07)"       : "1px solid rgba(0,0,0,0.04)",
+    boxShadow: scrolled
+      ? isDark
+        ? "0 4px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset"
+        : "0 4px 32px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset"
+      : "none",
+  };
+
+  const glassPanelStyle = {
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+  };
+
+  const dropdownPanel =
+    "absolute right-0 mt-2 bg-white/90 dark:bg-zinc-950/90 border border-zinc-200/60 dark:border-white/8 rounded-2xl shadow-2xl z-[80] overflow-hidden";
+
+  const iconBtn =
+    "relative p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all duration-200 hover:bg-zinc-100/80 dark:hover:bg-white/8";
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <>
-      {/* Background Dimming Layer on Scroll */}
+      {/* Top gradient fade */}
       <div
-        className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300"
-        style={{ opacity: 1 - scrollProgressValue * 0.5 }}
+        className="fixed w-full top-0 z-[60] h-20 bg-gradient-to-b from-black/30 to-transparent pointer-events-none transition-opacity duration-400"
+        style={{ opacity: scrolled ? 0 : 1 }}
       />
 
-      {/* Main Navbar */}
-      <nav
-        className="fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out"
-        style={{
-          // Use resolved theme when mounted; otherwise fall back to system preference
-          backgroundColor:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
-              ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
-              : `rgba(255,255,255,0.98)`,
-          backdropFilter: `blur(20px)`,
-          WebkitBackdropFilter: `blur(20px)`,
-          borderBottom:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
-              ? `1px solid rgba(255,255,255,0.1)`
-              : `1px solid rgba(0,0,0,0.08)`,
-        }}
+      {/* ── Navbar ──────────────────────────────────────────────────────────── */}
+      <motion.nav
+        className="fixed w-full top-0 left-0 right-0 z-[70]"
+        style={navStyle}
+        initial={{ y: -4, opacity: 0.8 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* Logo Group */}
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="bg-gradient-to-br from-accent to-blue-500 p-2 rounded-xl">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <span className="text-xl font-bold text-gray-950 dark:text-white">
+        {/* Top glow line */}
+        <div
+          className="absolute top-0 left-0 right-0 h-px pointer-events-none"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg, transparent, rgba(59,130,246,0.4) 40%, rgba(139,92,246,0.3) 60%, transparent)"
+              : "linear-gradient(90deg, transparent, rgba(59,130,246,0.2) 40%, rgba(139,92,246,0.15) 60%, transparent)",
+          }}
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 gap-4">
+
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-3 group shrink-0">
+              <motion.div
+                whileHover={{ scale: 1.08, rotate: -4 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 18 }}
+                className="relative"
+              >
+                <span className="absolute inset-0 rounded-xl bg-blue-500 opacity-0 group-hover:opacity-30 blur-md transition-opacity duration-300" />
+                <div className="relative bg-gradient-to-br from-blue-500 to-blue-700 p-2.5 rounded-xl text-white shadow-lg shadow-blue-600/20">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+              </motion.div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
                   Learnova
                 </span>
-                <p className="text-xs text-gray-600 dark:text-gray-300 uppercase tracking-wider font-semibold">
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black leading-none">
                   Premium
-                </p>
+                </span>
               </div>
             </Link>
 
-            {/* Desktop Navigation Control */}
-            <div className="hidden sm:flex items-center space-x-2">
-              {navigationItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 ${
-                      isActive
-                        ? "bg-accent/20 text-gray-950 dark:text-white font-medium"
-                        : "text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+            {/* Center Nav Capsule */}
+            <div className="hidden sm:flex items-center bg-zinc-100/60 dark:bg-white/5 border border-zinc-200/50 dark:border-white/8 rounded-2xl p-1 gap-0.5">
+              {navigationItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  isActive={pathname === item.href}
+                />
+              ))}
+            </div>
 
-              {/* Theme Selector Button */}
+            {/* Right Controls */}
+            <div className="hidden sm:flex items-center gap-2">
+
+              {/* Search Button */}
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-search"))}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/80 dark:hover:bg-white/8 transition-colors border border-zinc-200/40 dark:border-white/8"
+                aria-label="Open search"
+              >
+                <Search className="h-4 w-4 text-zinc-400" />
+                <span className="hidden md:inline text-xs">Search</span>
+                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-400 text-[10px] rounded border border-zinc-200 dark:border-zinc-800 font-mono leading-none">
+                  Ctrl K
+                </kbd>
+              </motion.button>
+
+              {/* Language Selector */}
+              <div className="relative" ref={langRef}>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setIsLangOpen(!isLangOpen)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/80 dark:hover:bg-white/8 transition-colors border border-zinc-200/40 dark:border-white/8"
+                  aria-label="Select language"
+                >
+                  <Languages className="h-4 w-4 text-zinc-400" />
+                  <span className="hidden md:inline text-xs">{currentLang}</span>
+                  <motion.span
+                    animate={{ rotate: isLangOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex"
+                  >
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </motion.span>
+                </motion.button>
+
+                <AnimatePresence>
+                  {isLangOpen && (
+                    <motion.div
+                      variants={dropdownVariants}
+                      initial="hidden" animate="visible" exit="exit"
+                      className={`${dropdownPanel} w-36 py-1.5`}
+                      style={glassPanelStyle}
+                    >
+                      {languagesList.map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => handleLangSelect(lang)}
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                            currentLang === lang
+                              ? "text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/60 dark:bg-blue-600/10"
+                              : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Theme Toggle */}
               {mounted && (
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                <motion.button
+                  whileHover={{ scale: 1.08, rotate: isDark ? 20 : -20 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
+                  className={iconBtn}
                   aria-label="Toggle theme"
                 >
-                  {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </button>
+                  {isDark
+                    ? <Sun className="h-4 w-4 text-amber-400" />
+                    : <Moon className="h-4 w-4" />
+                  }
+                </motion.button>
               )}
 
-              {/* Authentication Actions View */}
-              {isAuthenticated ? (
-                <div className="flex items-center space-x-2 sm:space-x-4 ml-2 sm:ml-6">
-                  <Button asChild className="hidden sm:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/attendance">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Mark Attendance
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
-                  
-                  <Button asChild className="hidden lg:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/notices">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Notice Board
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
+              {/* Auth Area */}
+              {loading ? (
+                <div className="w-24 h-9 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />
+              ) : isAuthenticated ? (
+                <div className="flex items-center gap-2 pl-2 border-l border-zinc-200/60 dark:border-white/8">
 
-                  {/* Notifications Overlay Node */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                      className="relative p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
-                      aria-label="View notifications"
+                  {/* Notifications */}
+                  <div className="relative" ref={notifRef}>
+                    <motion.button
+                      whileHover={{ scale: 1.08 }}
+                      whileTap={{ scale: 0.92 }}
+                      onClick={() => {
+                        setIsNotificationOpen(!isNotificationOpen);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={iconBtn}
+                      aria-label="Notifications"
                     >
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-xs text-white rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
+                      <Bell className="h-[18px] w-[18px]" />
+                      <AnimatePresence>
+                        {unreadCount > 0 && (
+                          <motion.span
+                            initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                            className="absolute top-1.5 right-1.5 bg-red-500 rounded-full h-2 w-2 ring-2 ring-white dark:ring-zinc-950"
+                          />
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
 
-                    {isNotificationOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-[52] overflow-hidden">
-                        <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
-                          <h3 className="text-foreground font-semibold text-sm">
-                            Notifications
-                          </h3>
-                          {unreadCount > 0 && (
-                            <button
-                              onClick={markAllAsRead}
-                              aria-label="Mark all notifications as read"
-                              className="text-xs font-medium text-accent hover:underline"
-                            >
-                              Mark all as read
-                            </button>
-                          )}
-                        </div>
-                        
-                        <div className="max-h-72 overflow-y-auto">
-                          {notifications.length === 0 ? (
-                            <div className="p-6 text-center">
-                              <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                              <p className="text-muted-foreground text-sm">
-                                No notifications available
-                              </p>
-                            </div>
-                          ) : (
-                            notifications.map((n) => (
-                              <div
-                                key={n.id}
-                                onClick={() => markAsRead(n.id)}
-                                className={`p-4 border-b border-border/60 cursor-pointer transition-colors hover:bg-muted/40 ${
-                                  !n.read ? "bg-accent/5 dark:bg-accent/10" : ""
-                                }`}
-                              >
-                                <p className="text-sm text-foreground">
-                                  {n.message}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {n.time}
-                                </p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    <AnimatePresence>
+                      {isNotificationOpen && (
+                        <motion.div
+                          variants={dropdownVariants}
+                          initial="hidden" animate="visible" exit="exit"
+                          className={`${dropdownPanel} w-72`}
+                          style={glassPanelStyle}
+                        >
+                          <div className="px-4 py-3 border-b border-zinc-100/60 dark:border-white/6 flex justify-between items-center">
+                            <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Notifications</h3>
+                            {unreadCount > 0 && (
+                              <button onClick={markAllAsRead} className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                                Mark all read
+                              </button>
+                            )}
+                          </div>
+                          <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100/50 dark:divide-white/5">
+                            {notifications.length === 0 ? (
+                              <p className="p-4 text-center text-sm text-zinc-400">No new notices</p>
+                            ) : (
+                              notifications.map((n) => (
+                                <div
+                                  key={n.id}
+                                  onClick={() => markAsRead(n.id)}
+                                  className={`p-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/4 transition-colors ${!n.read ? "bg-blue-50/30 dark:bg-blue-900/10" : ""}`}
+                                >
+                                  <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
-                  {/* Profile Menu Dropdown */}
+                  {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>
-                    <button
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
+                    <motion.button
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => {
+                        setIsDropdownOpen(!isDropdownOpen);
+                        setIsNotificationOpen(false);
+                      }}
+                      className="flex items-center gap-2 p-1.5 pl-2 pr-3 rounded-xl hover:bg-zinc-100/80 dark:hover:bg-white/6 border border-transparent hover:border-zinc-200/50 dark:hover:border-white/8 transition-all duration-200"
+                      aria-haspopup="true"
+                      aria-expanded={isDropdownOpen}
                     >
-                      <div className="relative w-10 h-10">
+                      <div className="relative w-7 h-7 shrink-0">
                         {getUserPhoto() ? (
                           <Image
-                            src={getUserPhoto()}
-                            alt="Profile"
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover border-2 border-accent/50"
+                            src={getUserPhoto()} alt="Profile"
+                            width={28} height={28}
+                            className="rounded-full object-cover ring-2 ring-blue-500/30"
                             onError={handleImageError}
                           />
                         ) : (
-                          <div className="fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">
-                              {getUserInitials(getUserDisplayName())}
-                            </span>
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
+                            {getUserInitials(getUserDisplayName())}
                           </div>
                         )}
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-zinc-950" />
                       </div>
+                      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 hidden md:inline max-w-[80px] truncate">
+                        {getUserDisplayName().split(" ")[0]}
+                      </span>
+                      <motion.span
+                        animate={{ rotate: isDropdownOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </motion.span>
+                    </motion.button>
 
-                      <div className="hidden sm:block text-left">
-                        <p className="text-sm font-medium text-foreground">
-                          {getUserDisplayName()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {getUserRole()}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                          isDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    {isDropdownOpen && (
-                      <div className="absolute right-0 mt-3 min-w-64 bg-background border border-border rounded-2xl shadow-2xl py-2 z-[52]">
-                        {userMenuItems.map((item) => (
-                          <Link
-                            key={item.key}
-                            href={item.href}
-                            onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center px-4 py-3 text-sm text-muted-foreground hover:bg-accent/10 hover:text-foreground transition-colors"
-                          >
-                            <item.icon className="h-4 w-4 mr-3 text-muted-foreground" />
-                            {item.label}
-                          </Link>
-                        ))}
-                        <hr className="my-2 border-border" />
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                    <AnimatePresence>
+                      {isDropdownOpen && (
+                        <motion.div
+                          variants={dropdownVariants}
+                          initial="hidden" animate="visible" exit="exit"
+                          className={`${dropdownPanel} w-52 py-1.5`}
+                          style={glassPanelStyle}
                         >
-                          <LogOut className="h-4 w-4 mr-3" />
-                          Logout
-                        </button>
-                      </div>
-                    )}
+                          <div className="px-4 py-3 border-b border-zinc-100/60 dark:border-white/6">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{getUserDisplayName()}</p>
+                            <p className="text-xs text-zinc-400 mt-0.5">{getUserRole()}</p>
+                          </div>
+                          {userMenuItems.map((item) => (
+                            <Link
+                              key={item.key}
+                              href={item.href}
+                              onClick={() => setIsDropdownOpen(false)}
+                              className="flex items-center px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors gap-2.5"
+                            >
+                              <item.icon className="h-4 w-4 text-zinc-400" />
+                              {item.label}
+                            </Link>
+                          ))}
+                          <div className="my-1 border-t border-zinc-100/60 dark:border-white/6" />
+                          <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/8 transition-colors gap-2.5"
+                          >
+                            <LogOut className="h-4 w-4" /> Logout
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               ) : (
-                <div className="ml-2 sm:ml-6">
-                  <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                /* Login Button */
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="relative group">
+                  <span className="absolute inset-0 rounded-xl bg-blue-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity duration-300" />
+                  <Button
+                    asChild
+                    size="default"
+                    className="relative bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl px-5 h-9 text-sm shadow-md shadow-blue-600/25 border border-blue-500/30 transition-all duration-200"
+                  >
                     <Link href="/auth">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Login / Signup
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
+                      <span className="flex items-center gap-1.5">
+                        Login <Sparkles className="h-3.5 w-3.5 text-blue-200" />
                       </span>
                     </Link>
                   </Button>
-                </div>
+                </motion.div>
               )}
             </div>
 
-            {/* Mobile View Toggle Control Trigger */}
+            {/* Mobile Menu Toggle */}
             <div className="sm:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Toggle Menu"
-                aria-expanded={isMenuOpen}
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-gray-800 dark:text-gray-100 hover:text-accent hover:bg-accent/10 transition-all duration-300"
+                className={iconBtn}
+                aria-label="Toggle menu"
+                aria-expanded={isMenuOpen}
               >
-                {isMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
-              </Button>
+                <AnimatePresence mode="wait">
+                  {isMenuOpen ? (
+                    <motion.span key="x"
+                      initial={{ rotate: -45, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 45, opacity: 0 }} transition={{ duration: 0.15 }}
+                    >
+                      <X className="h-6 w-6" />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="menu"
+                      initial={{ rotate: 45, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: -45, opacity: 0 }} transition={{ duration: 0.15 }}
+                    >
+                      <Menu className="h-6 w-6" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
-      {/* Mobile Context Drawer Menu */}
-      {isMenuOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[49] md:hidden"
-            onClick={() => setIsMenuOpen(false)}
-          />
+      {/* ── Mobile Drawer ────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/30 z-[85]"
+              style={{ backdropFilter: "blur(4px)" }}
+              onClick={() => setIsMenuOpen(false)}
+            />
 
-          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background text-foreground z-[52] md:hidden border-l border-border shadow-2xl flex flex-col justify-between">
-            <div>
-              <div className="p-6 border-b border-border flex justify-between items-center">
-                <h2 className="text-foreground text-lg font-bold">Menu</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Close menu"
+            <motion.div
+              key="drawer"
+              variants={mobileDrawerVariants}
+              initial="hidden" animate="visible" exit="exit"
+              className="fixed top-4 right-4 max-w-[85vw] w-64 rounded-2xl shadow-2xl p-4 space-y-4 z-[90] flex flex-col"
+              style={{
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                backgroundColor: isDark ? "rgba(9,9,11,0.93)" : "rgba(255,255,255,0.95)",
+                border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.07)",
+              }}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-100/60 dark:border-white/8">
+                <span className="font-bold text-xs text-zinc-400 uppercase tracking-wider">Menu</span>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setIsMenuOpen(false)}
+                  className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
                 >
-                  <X className="h-6 w-6" />
-                </Button>
+                  <X className="h-4 w-4 text-zinc-400" />
+                </motion.button>
               </div>
 
-              {/* User Identity Display Node (Mobile) */}
+              {/* User strip */}
               {isAuthenticated && (
-                <div className="p-6 border-b border-border">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-14 h-14 relative">
-                      {getUserPhoto() && (
-                        <Image
-                          src={getUserPhoto()}
-                          alt="User profile avatar"
-                          width={56}
-                          height={56}
-                          className="rounded-full border-2 border-accent/50 object-cover shadow-lg"
-                          onError={handleImageError}
-                        />
-                      )}
-                      <div
-                        className={`fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${
-                          getUserPhoto() ? "hidden" : "flex"
-                        }`}
-                      >
-                        <span className="text-lg font-bold text-white">
-                          {getUserInitials(getUserDisplayName())}
-                        </span>
+                <div className="flex items-center gap-3 p-2.5 bg-zinc-50/60 dark:bg-white/4 rounded-xl border border-zinc-100/60 dark:border-white/6">
+                  <div className="relative w-9 h-9 shrink-0">
+                    {getUserPhoto() ? (
+                      <Image src={getUserPhoto()} alt="Profile" width={36} height={36} className="rounded-full object-cover" onError={handleImageError} />
+                    ) : (
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
+                        {getUserInitials(getUserDisplayName())}
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-foreground font-semibold text-base truncate">
-                        {getUserDisplayName()}
-                      </h3>
-                      <p className="text-muted-foreground text-sm truncate">
-                        {user?.email || ""}
-                      </p>
-                      <div className="flex items-center mt-1">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2" />
-                        <span className="text-xs text-yellow-500 font-medium">
-                          {getUserRole()}
-                        </span>
-                      </div>
-                    </div>
+                    )}
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-zinc-950" />
                   </div>
-
-                  {/* Operational Quick Actions (Mobile) */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button asChild className="w-full bg-muted text-foreground hover:bg-muted/80 text-sm font-medium border border-border">
-                      <Link href="/attendance" onClick={() => setIsMenuOpen(false)}>
-                        <UserCheck className="h-4 w-4 mr-2 text-accent" />
-                        Attendance
-                      </Link>
-                    </Button>
-                    <Button asChild className="w-full bg-muted text-foreground hover:bg-muted/80 text-sm font-medium border border-border">
-                      <Link href="/notices" onClick={() => setIsMenuOpen(false)}>
-                        <Bell className="h-4 w-4 mr-2 text-purple-500" />
-                        Notices
-                      </Link>
-                    </Button>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{getUserDisplayName()}</p>
+                    <p className="text-[11px] text-zinc-400">{getUserRole()}</p>
                   </div>
                 </div>
               )}
 
-              {/* Mobile Core Navigation List */}
-              <div className="p-4 space-y-6">
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-                    Navigation
-                  </h4>
-                  {navigationItems.map((item) => (
+              {/* Nav links */}
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden" animate="visible"
+                className="flex flex-col gap-0.5"
+              >
+                {navigationItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <motion.div key={item.href} variants={staggerItem}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setIsMenuOpen(false)}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-blue-50 dark:bg-blue-600/15 text-blue-600 dark:text-blue-400"
+                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5"
+                        }`}
+                      >
+                        <item.icon className={`h-4 w-4 ${isActive ? "text-blue-500" : "text-zinc-400"}`} />
+                        {item.label}
+                        {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+
+              {/* Language grid */}
+              <div className="pt-2 border-t border-zinc-100/60 dark:border-white/8">
+                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 px-1">Language</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {languagesList.slice(0, 4).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => handleLangSelect(lang)}
+                      className={`text-xs p-2 rounded-xl border text-center transition-all font-medium ${
+                        currentLang === lang
+                          ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
+                          : "bg-zinc-50 dark:bg-white/4 border-zinc-200/60 dark:border-white/8 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/8"
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Account links */}
+              {isAuthenticated && (
+                <div className="pt-2 border-t border-zinc-100/60 dark:border-white/8 space-y-0.5">
+                  {userMenuItems.map((item) => (
                     <Link
-                      key={item.href}
+                      key={item.key}
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center px-4 py-3 hover:bg-accent/10 transition-colors rounded-xl group"
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
                     >
-                      <item.icon className="h-5 w-5 mr-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                      <span className="font-medium">{item.label}</span>
+                      <item.icon className="h-4 w-4 text-zinc-400" />
+                      {item.label}
                     </Link>
                   ))}
                 </div>
+              )}
 
-                {isAuthenticated && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-                      Account
-                    </h4>
-                    {userMenuItems.map((item) => (
-                      <Link
-                        key={item.key}
-                        href={item.href}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center px-4 py-3 hover:bg-accent/10 transition-colors rounded-xl group"
-                      >
-                        <item.icon className="h-5 w-5 mr-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                        <span className="font-medium">{item.label}</span>
+              {/* CTA / Logout */}
+              <div className="pt-2 border-t border-zinc-100/60 dark:border-white/8">
+                {loading ? (
+                  <div className="w-full h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />
+                ) : isAuthenticated ? (
+                  <Button onClick={handleLogout} variant="destructive" size="default" className="w-full rounded-xl text-sm h-10">
+                    <LogOut className="h-4 w-4 mr-2" /> Logout
+                  </Button>
+                ) : (
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button asChild size="default" className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-sm h-10 shadow-md shadow-blue-600/20">
+                      <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
+                        <span className="flex items-center gap-2">
+                          Get Started <Sparkles className="h-4 w-4 text-blue-200" />
+                        </span>
                       </Link>
-                    ))}
-                  </div>
+                    </Button>
+                  </motion.div>
                 )}
               </div>
-            </div>
 
-            {/* Mobile Footer Area Layout Container */}
-            <div className="p-6 border-t border-border space-y-4">
-              {isAuthenticated ? (
-                <Button
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-medium shadow-lg transition-all"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4 mr-3" />
-                  Sign Out
-                </Button>
-              ) : (
-                <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg transition-all">
-                  <Link href="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
-                    <Sparkles className="h-4 w-4 mr-3" />
-                    Get Started
-                  </Link>
-                </Button>
-              )}
-              
-              <div className="text-center space-y-3">
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
-                  }}
-                  className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors text-xs font-medium cursor-pointer"
-                >
-                  <Keyboard className="h-4 w-4 text-accent" />
-                  <span>Keyboard Shortcuts</span>
-                </button>
-                <p className="text-muted-foreground/60 text-[10px]">
-                  © {new Date().getFullYear()} Learnova. All rights reserved.
-                </p>
+              {/* Footer: theme + search + shortcuts */}
+              <div className="flex items-center justify-between pt-1">
+                {mounted && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                    onClick={() => setTheme(isDark ? "light" : "dark")}
+                    className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+                    aria-label="Toggle theme"
+                  >
+                    {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
+                  </motion.button>
+                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      window.dispatchEvent(new CustomEvent("learnova:open-search"));
+                    }}
+                    className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span>Search</span>
+                  </button>
+                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
+                    }}
+                    className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
+                  >
+                    <Keyboard className="h-3.5 w-3.5" />
+                    <span>Shortcuts</span>
+                  </button>
+                </div>
+                <p className="text-zinc-400/40 text-[10px]">© {new Date().getFullYear()}</p>
               </div>
-            </div>
-          </div>
-        </>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
