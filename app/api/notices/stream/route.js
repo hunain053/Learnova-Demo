@@ -159,19 +159,6 @@ export async function GET(request) {
       });
     }
 
-    if (connectionCount >= MAX_CONNECTIONS) {
-      return new Response(JSON.stringify({ error: "Too many connections" }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const existing = userStreams.get(userId);
-    if (existing) {
-      existing.close();
-    }
-
-    const connId = nextConnId++;
     let isConnected = true;
     let heartbeatTimer;
     let idleTimer;

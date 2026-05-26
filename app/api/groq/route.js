@@ -38,11 +38,4 @@ export const POST = withErrorHandler(async (request) => {
     }
     throw error;
   }
-  // Sanitize user message
-  const sanitizedMessage = sanitizeMessage(trimmedMessage);
-
-  // Call Groq
-  const content = await callGroq(sanitizedMessage);
-
-  return jsonSuccess({ message: content });
 });
