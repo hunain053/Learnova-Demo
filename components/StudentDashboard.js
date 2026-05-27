@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
@@ -9,15 +13,11 @@ import {
   Clock,
   MapPin,
   Camera,
-  CheckCircle,
   Shield,
-  Smartphone,
   TrendingUp,
   Target,
   Award,
   RefreshCw,
-  Download,
-  Star,
   Sparkles,
   AlertTriangle,
 } from "lucide-react";
@@ -33,8 +33,8 @@ import AttendanceChart from "./AttendanceChart";
 
 import {
   weeklySchedule,
-  mockRecentActivity,
 } from "@/constants/mockData";
+import { getUserActivities } from "@/services/activityService";
 
 const AttendanceHeatmap = dynamic(
   () => import("./AttendanceHeatmap"),
@@ -79,7 +79,33 @@ const StudentDashboard = () => {
   const [showComplaint, setShowComplaint] =
     useState(false);
 
+    useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        if (!user?.uid) return;
+        const activities = await getUserActivities(user.uid);
+        const mapped = activities.map(a => ({
+         subject: a.title,
+          date: a.timestamp?.toLocaleDateString() || "",
+          status:
+            a.progress >= 100
+              ? "present"
+              : a.progress > 0
+                ? "late"
+                : "absent",
+          }));
+setRecentActivity(mapped);
+      } catch (err) {
+        console.error("Failed to load activity", err);
+      }
+    };
+
+    fetchActivity();
+  }, [user]);
+
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchGamification = async () => {
       try {
         if (!user) return;
@@ -92,6 +118,7 @@ const StudentDashboard = () => {
             headers: {
               Authorization: `Bearer ${token}`,
             },
+            signal: controller.signal,
           }
         );
 
@@ -100,6 +127,7 @@ const StudentDashboard = () => {
           setGamificationData(data);
         }
       } catch (err) {
+        if (err.name === "AbortError") return;
         console.error(
           "Failed to load gamification data",
           err
@@ -108,6 +136,10 @@ const StudentDashboard = () => {
     };
 
     fetchGamification();
+
+    return () => {
+      controller.abort();
+    };
   }, [user]);
 
   // Attendance stats
@@ -166,11 +198,9 @@ const StudentDashboard = () => {
       setLoading(false);
     }, 1500);
 
-    const updateDashboard = () => {
+    const updateDashboard = async () => {
       try {
         const now = new Date();
-
-        setCurrentTime(now);
 
         const hour = now.getHours();
         const minute = now.getMinutes();
@@ -225,8 +255,6 @@ const StudentDashboard = () => {
 
         setUpcomingClass(upcoming || null);
 
-        setRecentActivity(mockRecentActivity);
-
         setError(null);
       } catch (err) {
         setError(
@@ -242,32 +270,15 @@ const StudentDashboard = () => {
 
     updateDashboard();
 
-    const timer = setInterval(
-      updateDashboard,
-      1000
-    );
+    const clockTimer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
     return () => {
-      clearInterval(timer);
+      clearInterval(clockTimer);
       clearTimeout(loadingTimer);
     };
   }, []);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "present":
-        return "text-green-400 bg-green-500/10 border-green-500/30";
-
-      case "absent":
-        return "text-red-400 bg-red-500/10 border-red-500/30";
-
-      case "late":
-        return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
-
-      default:
-        return "text-gray-400 bg-gray-500/10 border-gray-500/30";
-    }
-  };
 
   const getUserInitials = () => {
     if (!user?.displayName && !user?.email) {
@@ -323,75 +334,217 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black relative overflow-hidden">
       <Navbar />
 
-      <div className="relative z-10">
-        <div className="max-w-7xl mx-auto pt-20 pb-6 px-6">
-          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  {user?.photoURL ? (
-                    <Image
-                      src={user.photoURL}
-                      alt="Profile"
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
-                      <span className="text-sm font-bold text-white">
-                        {getUserInitials()}
-                      </span>
-                    </div>
-                  )}
+      <div className="relative z-10 max-w-7xl mx-auto pt-20 pb-12 px-6 space-y-6">
 
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
-                </div>
-
-                <div>
-                  <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
-                    {user?.displayName ||
-                      user?.email?.split("@")[0] ||
-                      "Student"}
-                  </h1>
-
-                  <div className="text-sm text-gray-400">
-                    {user?.email || "No email"}
+        {/* ── Header: profile + live clock ── */}
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                {user?.photoURL ? (
+                  <Image
+                    src={user.photoURL}
+                    alt={`${user?.displayName || user?.email?.split("@")[0] || "Student"} profile photo`}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
+                    <span className="text-sm font-bold text-white">
+                      {getUserInitials()}
+                    </span>
                   </div>
-                </div>
+                )}
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
               </div>
 
-              <div className="text-right">
-                <div className="text-xl font-mono text-white">
-                  {currentTime?.toLocaleTimeString(
-                    [],
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }
-                  )}
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
+                  {user?.displayName || user?.email?.split("@")[0] || "Student"}
+                </h1>
+                <div className="text-sm text-gray-400">
+                  {user?.email || "No email"}
                 </div>
+              </div>
+            </div>
 
-                <div className="text-xs text-gray-400">
-                  {currentTime?.toLocaleDateString(
-                    [],
-                    {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    }
-                  )}
-                </div>
+            <div className="text-right">
+              <div className="text-xl font-mono text-white">
+                {currentTime?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+              <div className="text-xs text-gray-400">
+                {currentTime?.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
               </div>
             </div>
           </div>
         </div>
+
+        {/* ── Gamification row: Streak · XP · Badges ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
+            <StreakCounter streak={gamificationData?.currentStreak ?? 0} />
+          </div>
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
+            <XpProgressBar
+              xp={gamificationData?.xp ?? 0}
+              level={gamificationData?.level ?? 1}
+            />
+          </div>
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
+            <BadgeGallery badges={gamificationData?.badges ?? []} />
+          </div>
+        </div>
+
+        {/* ── Attendance window banner ── */}
+        {isAttendanceWindow && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex items-center gap-3">
+            <Camera className="w-5 h-5 text-green-400 flex-shrink-0" />
+            <p className="text-green-300 text-sm font-medium">
+              Attendance window is open right now. Head to the{" "}
+              <span className="font-bold">Attendance</span> tab to check in.
+            </p>
+          </div>
+        )}
+
+        {/* ── Main content: schedule (left) + attendance (right) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* Today's Schedule */}
+          <div className="lg:col-span-1 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-5 h-5 text-accent" />
+              <h2 className="text-lg font-bold text-white">Today&apos;s Schedule</h2>
+            </div>
+
+            {todayClasses.length === 0 ? (
+              <p className="text-gray-500 text-sm">No classes scheduled today.</p>
+            ) : (
+              <div className="space-y-3">
+                {todayClasses.map((cls, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start gap-3 p-3 rounded-xl border ${
+                      upcomingClass === cls
+                        ? "border-accent/50 bg-accent/10"
+                        : "border-white/5 bg-white/5"
+                    }`}
+                  >
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Clock className="w-4 h-4 text-accent" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white text-sm font-semibold truncate">{cls.subject}</p>
+                      <p className="text-gray-400 text-xs">{cls.time}</p>
+                      {cls.room && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />
+                          {cls.room}
+                        </p>
+                      )}
+                    </div>
+                    {upcomingClass === cls && (
+                      <span className="ml-auto flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 border border-accent/30 px-2 py-0.5 rounded-full">
+                        Next
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Attendance performance stats */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-5 h-5 text-accent" />
+                <h2 className="text-lg font-bold text-white">Attendance Performance</h2>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <StatCard color="green" label="Present" value={attendanceStats.present} />
+                <StatCard color="red"   label="Absent"  value={attendanceStats.absent} />
+                <StatCard color="yellow" label="Late"   value={attendanceStats.late} />
+                <StatCard color="blue"  label="Rate"    value={`${attendanceStats.percentage}%`} />
+              </div>
+
+              <AttendanceChart data={recentActivity} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Attendance heatmap / calendar toggle ── */}
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-accent" />
+              <h2 className="text-lg font-bold text-white">Attendance History</h2>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode("heatmap")}
+                className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                  viewMode === "heatmap"
+                    ? "bg-accent/20 border-accent/50 text-accent"
+                    : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
+                }`}
+              >
+                Heatmap
+              </button>
+              <button
+                onClick={() => setViewMode("calendar")}
+                className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                  viewMode === "calendar"
+                    ? "bg-accent/20 border-accent/50 text-accent"
+                    : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
+                }`}
+              >
+                Calendar
+              </button>
+            </div>
+          </div>
+
+          {viewMode === "heatmap" ? <AttendanceHeatmap /> : <AttendanceCalendar />}
+        </div>
+
+        {/* ── Attendance Analytics ── */}
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-accent" />
+            <h2 className="text-lg font-bold text-white">Analytics</h2>
+          </div>
+          <AttendanceAnalytics />
+        </div>
+
+        {/* ── Achievements ── */}
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="w-5 h-5 text-accent" />
+            <h2 className="text-lg font-bold text-white">Achievements</h2>
+          </div>
+          <AchievementSection performance={attendancePerformance} />
+        </div>
+
+        {/* ── Raise a complaint ── */}
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-accent" />
+              <h2 className="text-lg font-bold text-white">Support</h2>
+            </div>
+            <button
+              onClick={() => setShowComplaint((v) => !v)}
+              className="text-xs px-3 py-1.5 rounded-lg border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 font-medium transition-colors"
+            >
+              {showComplaint ? "Hide Form" : "Raise a Complaint"}
+            </button>
+          </div>
+
+          {showComplaint && <ComplaintForm />}
+        </div>
+
       </div>
-
-      {/* MAIN CONTENT CONTINUES */}
-
-      {/* Keep all your remaining JSX exactly same below this */}
-
     </div>
   );
 };
@@ -428,43 +581,4 @@ const StatCard = ({
   );
 };
 
-const QuickStat = ({
-  icon,
-  label,
-  value,
-}) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center space-x-2">
-      {icon}
-
-      <span className="text-gray-300 text-sm">
-        {label}
-      </span>
-    </div>
-
-    <span className="text-white font-semibold">
-      {value}
-    </span>
-  </div>
-);
-
-const SecurityItem = ({
-  label,
-  status,
-}) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center space-x-2">
-      <CheckCircle className="w-4 h-4 text-green-400" />
-
-      <span className="text-gray-300 text-sm">
-        {label}
-      </span>
-    </div>
-
-    <span className="text-green-400 text-sm">
-      {status}
-    </span>
-  </div>
-);
-
-export default StudentDashboard;
+export default React.memo(StudentDashboard);

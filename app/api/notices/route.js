@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { connectDb } from "@/lib/mongodb";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const noticeSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -20,11 +21,9 @@ async function publishNotice(request) {
   const allowedRoles = ["teacher", "admin", "staff"];
   const { payload: decodedToken, profile } = await requireRole(request, allowedRoles);
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024 * 50);
   const validData = noticeSchema.parse(body);
 
-  const db = await connectDb();
-  
   const newNotice = {
     ...validData,
     author: decodedToken.name || decodedToken.email.split("@")[0],
@@ -34,11 +33,13 @@ async function publishNotice(request) {
     updatedAt: new Date(),
   };
 
-  const result = await db.collection("notices").insertOne(newNotice);
+  const result = await adminDb
+    .collection("notices")
+    .add(newNotice);
 
   return NextResponse.json({
     success: true,
-    notice: { id: result.insertedId, ...newNotice }
+    notice: { id: result.id, ...newNotice }
   });
 }
 
