@@ -15,6 +15,7 @@ import { metadata } from "@/lib/seo/siteMetadata";
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 import NextTopLoader from "nextjs-toploader";
 import RouteAnnouncer from "@/components/RouteAnnouncer";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Validate environment variables at startup (server-side only).
 // Local development should keep public pages renderable for contributor onboarding,
@@ -100,7 +101,9 @@ export default function RootLayout({ children }) {
           />
           <Suspense fallback={null}>
             <main id="main-content" className="outline-none" tabIndex="-1">
-              <PageTransition>{children}</PageTransition>
+              <ErrorBoundary>
+                <PageTransition>{children}</PageTransition>
+              </ErrorBoundary>
             </main>
 
             <ScrollToTop />

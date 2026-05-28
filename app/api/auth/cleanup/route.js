@@ -35,13 +35,9 @@ export const POST = withErrorHandler(async (request) => {
   try {
     initializeFirebase();
     
-    console.log(`[auth-cleanup] Attempting to delete orphaned account: ${uid}`);
-    
     // Delete the user from Firebase Auth using Admin SDK
     // This bypasses the re-authentication requirement
     await admin.auth().deleteUser(uid);
-    
-    console.log(`[auth-cleanup] Successfully deleted orphaned account: ${uid}`);
     
     return jsonSuccess({ 
       message: "Orphaned auth account deleted successfully",
@@ -50,7 +46,6 @@ export const POST = withErrorHandler(async (request) => {
   } catch (error) {
     // Don't throw if user doesn't exist - they may have been already cleaned up
     if (error.code === "auth/user-not-found") {
-      console.warn(`[auth-cleanup] User ${uid} not found - may have been already cleaned up`);
       return jsonSuccess({ 
         message: "User already deleted or not found",
         uid 

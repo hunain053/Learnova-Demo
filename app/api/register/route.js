@@ -50,6 +50,22 @@ const MAGIC_BYTES = {
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
 
+/**
+ * Escapes HTML characters inside input values to prevent Stored XSS
+ * vulnerabilities in fields that are stored and rendered (CWE-79).
+ */
+const sanitizeHtml = (text) => {
+  if (typeof text !== "string") return "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;")
+    .trim();
+};
+
 const getImageExtension = (mimeType) => {
   switch (mimeType) {
     case "image/png":
@@ -180,6 +196,9 @@ export const POST =
         email,
       } =
         validationResult.data;
+
+      const sanitizedName = sanitizeHtml(name);
+      const sanitizedRollNo = sanitizeHtml(rollNo);
 
       // Validate file
       if (
@@ -322,8 +341,8 @@ export const POST =
 
       try {
         const user = {
-          name,
-          rollNo,
+          name: sanitizedName,
+          rollNo: sanitizedRollNo,
           email,
           image:
             blob.url,
