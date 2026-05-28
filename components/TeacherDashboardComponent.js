@@ -68,9 +68,8 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
-import { db } from "@/lib/firebaseConfig";
-import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
-import { getTodayKeyLocal } from "@/lib/dateUtils";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useCurriculum } from "@/hooks/useCurriculum";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -90,78 +89,10 @@ const TeacherDashboard = () => {
   const [passcodeLoading, setPasscodeLoading] = useState(false);
   const [passcodeExpiresAt, setPasscodeExpiresAt] = useState(null);
   const { user, userProfile } = useAuth();
-  const [attendanceStats, setAttendanceStats] = useState({
-    totalStudents: 0,
-    presentToday: 0,
-    absentToday: 0,
-    lateToday: 0,
-    averageAttendance: 0,
-  });
 
-  const fetchTodayAttendanceStats = useCallback(async () => {
-    try {
-      const today = getTodayKeyLocal();
+  const { attendanceStats, studentAttendanceData } = useAttendance({ role: "teacher", user });
+  const { curriculum } = useCurriculum({ role: "teacher", user });
 
-      const attendanceQuery = query(
-        collection(db, "attendance_records"),
-        where("date", "==", today),
-      );
-
-      const snapshot = await getDocs(attendanceQuery);
-
-      const records = snapshot.docs.map((doc) =>
-        doc.data(),
-      );
-
-      const presentToday = records.filter(
-        (r) =>
-          r.status === "present" ||
-          !r.status,
-      ).length;
-
-      const lateToday = records.filter(
-        (r) => r.status === "late",
-      ).length;
-
-      // Query the users collection to get total enrolled students with role === "student"
-      const studentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-      );
-      const studentsSnapshot = await getDocs(studentsQuery);
-      const totalStudents = studentsSnapshot.size;
-
-      // Calculate absent students dynamically as the remainder of enrolled students
-      const absentToday = Math.max(0, totalStudents - (presentToday + lateToday));
-
-      const averageAttendance =
-        totalStudents > 0
-          ? Math.round(
-              ((presentToday + lateToday) /
-                totalStudents) *
-                1000,
-            ) / 10
-          : 0;
-
-      setAttendanceStats({
-        totalStudents,
-        presentToday,
-        absentToday,
-        lateToday,
-        averageAttendance,
-      });
-    } catch (err) {
-      console.error(
-        "Failed to fetch today's attendance stats:",
-        err,
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTodayAttendanceStats();
-  }, [fetchTodayAttendanceStats]);
-    
   const [todayClasses, setTodayClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [attendanceRequests, setAttendanceRequests] = useState([]);
@@ -193,7 +124,6 @@ const TeacherDashboard = () => {
   });
 
   const [weeklySchedule, setWeeklySchedule] = useState({});
-  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = (format) => {
@@ -289,76 +219,6 @@ const TeacherDashboard = () => {
     fetchSchedule();
   }, [user, userProfile]);
 
-  // Fetch Active Class Student Roster
-  useEffect(() => {
-    if (!user) return;
-    
-    let unsubscribe = () => {};
-
-    const fetchStudentsAndAttendance = async () => {
-      try {
-        const usersRef = collection(db, "users");
-        const qStudents = query(usersRef, where("role", "==", "student"));
-        const studentDocs = await getDocs(qStudents);
-        
-        const studentsList = studentDocs.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().displayName || doc.data().name || `${doc.data().firstName || ""} ${doc.data().lastName || ""}`.trim() || "Unknown",
-          rollNo: doc.data().rollNo || doc.data().studentId || "N/A",
-          email: doc.data().email,
-        }));
-
-        const today = getTodayKeyLocal();
-        const attendanceQuery = query(
-          collection(db, "attendance_records"),
-          where("date", "==", today)
-        );
-
-        unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-          const attendanceMap = new Map();
-          snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            if (data.userId) attendanceMap.set(data.userId, data);
-            else if (data.email) attendanceMap.set(data.email, data);
-          });
-
-          const mergedRoster = studentsList.map((student, index) => {
-            const record = attendanceMap.get(student.id) || attendanceMap.get(student.email);
-            return {
-              id: student.id || index,
-              name: student.name,
-              rollNo: student.rollNo,
-              status: record ? (record.status || "present") : "absent",
-              time: record && record.timestamp ? new Date(record.timestamp.toDate ? record.timestamp.toDate() : record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "--",
-              confidence: record ? (record.confidenceScore ? Math.round(record.confidenceScore * 100) : 100) : 0,
-            };
-          });
-
-          mergedRoster.sort((a, b) => a.name.localeCompare(b.name));
-          
-          if (mergedRoster.length > 0) {
-            setStudentAttendanceData(mergedRoster);
-          } else {
-             // Fallback to mock data if there are no registered students at all in the DB
-             setStudentAttendanceData([
-               { id: 1, name: "Alex Johnson", rollNo: "CS21B1001", status: "present", time: "09:02", confidence: 98 },
-               { id: 2, name: "Emma Davis", rollNo: "CS21B1002", status: "present", time: "09:01", confidence: 95 },
-               { id: 3, name: "Michael Chen", rollNo: "CS21B1003", status: "late", time: "09:08", confidence: 92 },
-               { id: 4, name: "Sarah Wilson", rollNo: "CS21B1004", status: "absent", time: "--", confidence: 0 },
-               { id: 5, name: "David Kumar", rollNo: "CS21B1005", status: "present", time: "09:03", confidence: 97 },
-             ]);
-          }
-        });
-
-      } catch (error) {
-        console.error("Error fetching students for roster:", error);
-      }
-    };
-    
-    fetchStudentsAndAttendance();
-
-    return () => unsubscribe();
-  }, [user]);
 
   const fetchAllRequests = async () => {
     if (!user) return;
