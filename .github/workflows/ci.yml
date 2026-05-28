@@ -29,6 +29,9 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install
 
+      - name: 🧪 Run unit tests
+        run: npm test
+
       - name: 🔧 Fix Tailwind CSS native binding
         run: |
           OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
