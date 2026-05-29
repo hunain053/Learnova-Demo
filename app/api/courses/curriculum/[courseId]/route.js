@@ -50,9 +50,9 @@ const MOCK_CURRICULUMS = {
 export async function GET(request, { params }) {
   try {
     const { courseId } = await params;
-    
+
     let curriculum = null;
-    
+
     // Attempt database query if MongoDB is configured
     try {
       if (process.env.MONGODB_URI) {

@@ -25,7 +25,7 @@ export async function POST(request) {
     try {
       if (process.env.MONGODB_URI) {
         const db = await connectDb();
-        
+
         // Structure the modules list to enforce position sequences
         const structuredModules = modules.map((mod, modIdx) => ({
           id: mod.id,
@@ -43,11 +43,11 @@ export async function POST(request) {
 
         await db.collection("course_curriculums").updateOne(
           { courseId },
-          { 
-            $set: { 
-              modules: structuredModules, 
-              updatedAt: new Date() 
-            } 
+          {
+            $set: {
+              modules: structuredModules,
+              updatedAt: new Date()
+            }
           },
           { upsert: true }
         );
@@ -60,8 +60,8 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       persisted: isDbPersisted,
-      message: isDbPersisted 
-        ? "Curriculum synced atomically to MongoDB successfully" 
+      message: isDbPersisted
+        ? "Curriculum synced atomically to MongoDB successfully"
         : "Curriculum cached successfully (Demo fallback mode active)"
     });
   } catch (error) {

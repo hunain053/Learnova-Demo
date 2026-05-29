@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  GripVertical, 
-  ChevronDown, 
-  ChevronUp, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Check, 
-  X, 
-  Video, 
-  FileText, 
-  HelpCircle, 
+import {
+  GripVertical,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  Edit3,
+  Check,
+  X,
+  Video,
+  FileText,
+  HelpCircle,
   Code,
   BookOpen,
   Sparkles,
@@ -28,18 +28,18 @@ import { COURSES } from "@/lib/courses";
 export default function CurriculumBuilder() {
   const [courses] = useState(COURSES);
   const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0]?.id || "nextjs-mastery");
-  
+
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
-  
+
   // Track expanded state for module accordions
   const [expandedModules, setExpandedModules] = useState({});
 
   // Inline editing state
   const [editingEntity, setEditingEntity] = useState(null); // { type: 'module'|'lesson', id, parentId(for lesson), tempTitle }
-  
+
   // Drag and Drop tracking state
   const [draggedItem, setDraggedItem] = useState(null); // { type: 'module'|'lesson', id, index, parentModuleId }
   const [dragOverModuleId, setDragOverModuleId] = useState(null);
@@ -86,7 +86,7 @@ export default function CurriculumBuilder() {
     setSyncing(true);
     // Optimistically update localStorage cache
     localStorage.setItem(`curriculum-${selectedCourseId}`, JSON.stringify(updatedModules));
-    
+
     // Custom toast saving notification (elegant non-blocking visual feedback)
     const toastId = toast.loading("Saving changes...", {
       style: {
@@ -172,8 +172,8 @@ export default function CurriculumBuilder() {
 
     let updated = [];
     if (editingEntity.type === "module") {
-      updated = modules.map(mod => 
-        mod.id === editingEntity.id 
+      updated = modules.map(mod =>
+        mod.id === editingEntity.id
           ? { ...mod, title: editingEntity.tempTitle }
           : mod
       );
@@ -182,7 +182,7 @@ export default function CurriculumBuilder() {
         if (mod.id === editingEntity.parentId) {
           return {
             ...mod,
-            lessons: mod.lessons.map(les => 
+            lessons: mod.lessons.map(les =>
               les.id === editingEntity.id
                 ? { ...les, title: editingEntity.tempTitle }
                 : les
@@ -253,7 +253,7 @@ export default function CurriculumBuilder() {
       if (mod.id === moduleId) {
         return {
           ...mod,
-          lessons: mod.lessons.map(les => 
+          lessons: mod.lessons.map(les =>
             les.id === lessonId ? { ...les, type: newType } : les
           )
         };
@@ -270,7 +270,7 @@ export default function CurriculumBuilder() {
       if (mod.id === moduleId) {
         return {
           ...mod,
-          lessons: mod.lessons.map(les => 
+          lessons: mod.lessons.map(les =>
             les.id === lessonId ? { ...les, duration: newDuration } : les
           )
         };
@@ -295,7 +295,7 @@ export default function CurriculumBuilder() {
   // ==========================================
   // DRAG AND DROP HANDLERS (NATIVE HTML5 IMPLEMENTATION)
   // ==========================================
-  
+
   const handleDragStart = (e, type, index, id, parentModuleId = null) => {
     setDraggedItem({ type, index, id, parentModuleId });
     e.dataTransfer.effectAllowed = "move";
@@ -316,7 +316,7 @@ export default function CurriculumBuilder() {
       if (draggedItem.index === targetIndex) return;
       setDragOverModuleId(targetModuleId);
     }
-    
+
     // Handle Lesson dragging over Lesson or Module
     if (draggedItem.type === "lesson") {
       setDragOverModuleId(targetModuleId);
@@ -339,7 +339,7 @@ export default function CurriculumBuilder() {
       const movedModule = updated[draggedItem.index];
       updated.splice(draggedItem.index, 1);
       updated.splice(targetIndex, 0, movedModule);
-      
+
       // Update order field
       updated = updated.map((mod, idx) => ({ ...mod, order: idx }));
       setModules(updated);
@@ -351,14 +351,14 @@ export default function CurriculumBuilder() {
       // Find origin and target modules
       const originModIdx = updated.findIndex(m => m.id === draggedItem.parentModuleId);
       const targetModIdx = updated.findIndex(m => m.id === targetModuleId);
-      
+
       if (originModIdx !== -1 && targetModIdx !== -1) {
         const originModule = updated[originModIdx];
         const targetModule = updated[targetModIdx];
-        
+
         // Remove from origin
         const [movedLesson] = originModule.lessons.splice(draggedItem.index, 1);
-        
+
         // Find insert index
         let insertIndex = targetModule.lessons.length;
         if (targetType === "lesson" && targetLessonId) {
@@ -472,7 +472,7 @@ export default function CurriculumBuilder() {
                 } ${isTargetOver ? "border-indigo-500 bg-indigo-500/5 translate-y-1 shadow-lg shadow-indigo-500/5" : ""}`}
               >
                 {/* Module Header Panel */}
-                <div 
+                <div
                   className={`flex items-center justify-between p-4 px-6 border-b transition-colors duration-200 select-none ${
                     isExpanded ? "bg-zinc-900/40 border-zinc-800/80" : "bg-transparent border-transparent"
                   }`}
@@ -514,7 +514,7 @@ export default function CurriculumBuilder() {
                         </button>
                       </div>
                     ) : (
-                      <h3 
+                      <h3
                         onDoubleClick={() => startEditing("module", mod.id, mod.title)}
                         className="font-bold text-zinc-200 text-base flex items-center gap-2 group/title cursor-text select-none"
                       >
@@ -614,7 +614,7 @@ export default function CurriculumBuilder() {
                                 </div>
                               ) : (
                                 <div className="flex flex-col gap-0.5">
-                                  <span 
+                                  <span
                                     onDoubleClick={() => startEditing("lesson", lesson.id, lesson.title, mod.id)}
                                     className="text-sm font-semibold text-zinc-300 group-hover/lesson:text-zinc-100 flex items-center gap-2 cursor-text"
                                   >

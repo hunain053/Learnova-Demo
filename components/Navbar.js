@@ -166,7 +166,7 @@ export function Navbar() {
   };
 
   window.addEventListener("resize", handleResize);
-  
+
   // ✅ Explicit arrow function hook return to safely purge registration on unmount
   return () => window.removeEventListener("resize", handleResize);
 }, []);

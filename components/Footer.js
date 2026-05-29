@@ -133,7 +133,7 @@ export default function Footer() {
 
   return (
     <footer className="relative overflow-hidden border-t border-border/70 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.16),transparent_38%),linear-gradient(180deg,rgba(9,9,11,0.94),rgba(3,7,18,1))] text-foreground transition-colors duration-300">
-      
+
       {/* ── Background decoration effects ── */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="absolute -top-20 left-6 h-48 w-48 rounded-full bg-fuchsia-500/10 blur-3xl" />
@@ -158,7 +158,7 @@ export default function Footer() {
 
       <div className="relative mx-auto max-w-7xl px-6 py-14 sm:py-16">
         <div className="grid gap-8 rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl lg:grid-cols-[1.3fr_0.9fr_0.9fr_1fr] lg:p-8">
-          
+
           {/* ── Brand Column ── */}
           <div className="space-y-6">
             <div className="flex items-center gap-3">

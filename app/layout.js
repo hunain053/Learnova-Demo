@@ -87,7 +87,7 @@ export default function RootLayout({ children }) {
           Skip to Main Content
         </a>
           {/* Cursor glow removed per UX preference */}
-          
+
         <AllProviders>
           <ScrollProgress />
           <NextTopLoader
