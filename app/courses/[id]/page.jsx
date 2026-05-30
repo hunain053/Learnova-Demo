@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   BookOpen, 
@@ -15,11 +14,20 @@ import ShareButton from "@/components/ui/ShareButton";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import ReadingTimeBadge from "@/components/ui/ReadingTimeBadge";
 import toast from "react-hot-toast";
+import { useParams, useRouter, notFound } from "next/navigation"; // 🌟 Added notFound here
+import { routeParamSchema } from "@/lib/validations/auth"; // 🌟 Added your validation schema
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
 
 export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  
+  const validationCheck = routeParamSchema.safeParse({ id: params.id });
+  
+  if (!validationCheck.success) {
+    return notFound(); // Gracesfully triggers Next.js 404 handler interface instead of crashing client UI
+  }
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
