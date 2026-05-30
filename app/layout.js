@@ -18,8 +18,6 @@ import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/ui/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ScrollProgress from "@/components/ui/ScrollProgress";
-<<<<<<< HEAD
-<<<<<<< HEAD
 import AllProviders from "./providers/AllProviders";
 export { metadata } from "@/lib/seo/siteMetadata";
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
@@ -27,20 +25,12 @@ import NextTopLoader from "nextjs-toploader";
 
 // 🎯 FIX: Explicitly loading overlays
 import CommandPaletteWrapper from "@/components/CommandPalette";
-=======
+
 import RouteAnnouncer from "@/components/RouteAnnouncer";
->>>>>>> upstream/master
-=======
 import RouteAnnouncer from "@/components/RouteAnnouncer";
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
 import ErrorBoundary from "@/components/ErrorBoundary";
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-// Validate environment variables at startup (server-side only).
-=======
-=======
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
 // ─── Command palette (wrapper owns isOpen state via useCommandPalette hook) ──
 // Conflict resolved: use CommandPaletteWrapper, NOT CommandPalette directly.
 // CommandPalette requires isOpen + onClose props — it has no internal state.
@@ -54,7 +44,7 @@ import AllProviders from "./providers/AllProviders";
 // ─── SEO metadata & structured data ─────────────────────────────────────────
 export { metadata } from "@/lib/seo/siteMetadata";
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
-<<<<<<< HEAD
+
 import NextTopLoader from "nextjs-toploader";
 
 // 🎯 FIX: Explicitly loading overlays
@@ -63,32 +53,28 @@ import CommandPalette from "../components/CommandPalette";
 import RouteAnnouncer from "@/components/RouteAnnouncer";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
-=======
+
 import CommandPalette from "../components/CommandPalette";
->>>>>>> upstream/master
+
 
 // Validate environment variables at startup (server-side only).
 // ─── Environment validation (server-side only, runs once at startup) ─────────
 // Kept outside the component so it runs at module load time, not per-render.
 // throwOnError:false keeps local dev working even without all secrets set.
-<<<<<<< HEAD
->>>>>>> upstream/master
-=======
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
+
 if (typeof window === "undefined") {
   try {
     const { validateEnv } = require("@/lib/env");
     validateEnv({
-<<<<<<< HEAD
-<<<<<<< HEAD
+
       throwOnError: false,
-=======
+
       throwOnError: false, // Avoid failing the build during local/CI evaluation
->>>>>>> upstream/master
-=======
+
       throwOnError: false,
       throwOnError: false, // Avoid failing the build during local/CI evaluation
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
       warnOnce: true,
     });
   } catch (error) {
@@ -340,18 +326,14 @@ export default function RootLayout({ children }) {
         >
           Skip to Main Content
         </a>
-<<<<<<< HEAD
-<<<<<<< HEAD
-          
-=======
+
 
         {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
->>>>>>> upstream/master
-=======
+
           
 
         {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
         <AllProviders>
           {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
               are actually imported and exported correctly in AllProviders 
@@ -384,14 +366,9 @@ export default function RootLayout({ children }) {
             {/* ── Scroll restoration on route change ── */}
             <ScrollToTop />
             <Footer />
-<<<<<<< HEAD
-<<<<<<< HEAD
+
             <ClientLayout />
             <BackToTop />
-
-=======
-=======
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
 
             {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
             <ClientLayout />
@@ -405,10 +382,8 @@ export default function RootLayout({ children }) {
             <OfflineIndicator />
 
             {/* Single Toaster configuration */}
-<<<<<<< HEAD
->>>>>>> upstream/master
-=======
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
+
             <Toaster
               position="top-right"
               toastOptions={{
@@ -416,24 +391,20 @@ export default function RootLayout({ children }) {
                 style: { fontWeight: 600 },
               }}
             />
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
             <OfflineIndicator />
             <CommandPaletteWrapper />
             
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />
-<<<<<<< HEAD
-=======
+
             
             <CommandPalette />
->>>>>>> upstream/master
-=======
+
+
 
             <CommandPalette />
->>>>>>> 148a7889b85a493e51b548db69afb7482d0d305d
+
           </Suspense>
         </AllProviders>
 

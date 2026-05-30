@@ -3,16 +3,22 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": "./",
     "paths": {
-<<<<<<< HEAD
-      "@/*": ["./*"]
-=======
       "@/*": ["./*"],
       "@components/*": ["./components/*"],
       "@utils/*": ["./utils/*"],
       "@app/*": ["./app/*"]
->>>>>>> upstream/master
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
-  "exclude": ["node_modules", ".next", "dist"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist"
+  ]
 }
