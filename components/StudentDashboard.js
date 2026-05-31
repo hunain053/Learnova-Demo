@@ -233,7 +233,6 @@ const StudentDashboard = () => {
 
   const [viewMode, setViewMode] = useState("heatmap");
   const [showComplaint, setShowComplaint] = useState(false);
-  const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(false);
   const lastScheduleTickRef = useRef(getScheduleTickKey(new Date()));
 
   const attendanceStats = useMemo(() => {
