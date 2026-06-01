@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 import { useEffect } from "react";
 import { useState } from "react";
 import {
@@ -39,6 +40,9 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 import { useAuth } from "@/hooks/useAuth";
 import { getOutboxRecords, removeFromOutbox, clearOutbox } from "@/lib/offlineStore";
 import { syncAttendanceQueue } from "@/lib/syncService";
+import { apiFetch } from "@/lib/apiClient";
+import { useIsMounted } from "@/hooks/useIsMounted";
+
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -57,6 +61,7 @@ const SuperAdminDashboard = () => {
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const [systemStatus, setSystemStatus] = useState("operational");
   const { user } = useAuth();
+  const isMounted = useIsMounted();
 
   const [platformStats, setPlatformStats] = useState({
     totalInstitutes: 0,
@@ -90,7 +95,9 @@ const SuperAdminDashboard = () => {
     const updateOutbox = async () => {
       try {
         const records = await getOutboxRecords();
-        setOutboxRecords(records || []);
+        if (isMounted()) {
+          setOutboxRecords(records || []);
+        }
       } catch (err) {
         console.error("Error reading outbox in dashboard:", err);
       }
@@ -176,7 +183,7 @@ const SuperAdminDashboard = () => {
     const fetchStats = async () => {
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/admin/stats", {
+        const res = await apiFetch("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
@@ -192,10 +199,12 @@ const SuperAdminDashboard = () => {
           if (data.featureUsage) setFeatureUsage(data.featureUsage);
         } else {
           console.error("Failed to fetch admin stats:", res.status);
+          toast.error("Failed to load platform stats. Please refresh.");
         }
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Error fetching admin stats:", err);
+        toast.error("Network error loading admin stats.");
       } finally {
         if (isActive) {
           setLoading(false);

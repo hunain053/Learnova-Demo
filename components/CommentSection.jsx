@@ -10,21 +10,6 @@ import {
 import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
 
 // REMOVE db AND useAuth IMPORTS FOR NOW TO PREVENT CRASHES
-const defaultComments = [
-  {
-    id: "seed_1",
-    userName: "Ananya Rao",
-    userRole: "Teacher",
-    text: "Please make sure to review this notice before Monday's class.",
-  },
-  {
-    id: "seed_2",
-    userName: "Rahul Sharma",
-    userRole: "Student",
-    text: "Got it! Thanks for the update.",
-  },
-];
-
 const CommentSection = ({ noticeId }) => {
   // 1. FAKE USER BYPASS: This pretends you are logged in as a Teacher or Student
   const mockUser = {
@@ -37,11 +22,12 @@ const CommentSection = ({ noticeId }) => {
   const [newComment, setNewComment] = useState("");
   const storageKey = getCommentStorageKey(noticeId);
 
+
   useEffect(() => {
-    const savedComments = localStorage.getItem(storageKey);
+    const savedComments = safeLocalStorageGet(storageKey, null);
 
     if (savedComments) {
-      setComments(JSON.parse(savedComments));
+      setComments(normalizeStoredComments(savedComments));
     } else {
       const defaultComments = [
         {
@@ -79,7 +65,9 @@ const CommentSection = ({ noticeId }) => {
     setComments(updatedComments);
 
     // Save to browser memory so it stays there when you refresh the page
+
     localStorage.setItem(storageKey, JSON.stringify(updatedComments));
+
     setNewComment("");
   };
 

@@ -44,6 +44,9 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
+import ActivityHeatmap from "@/components/activity/ActivityHeatmap";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function UniversalProfile() {
   const { user, userProfile, loading } = useAuth();
@@ -349,7 +352,7 @@ export default function UniversalProfile() {
         uploadFormData.append("faceDescriptor", faceDescriptorString);
       }
 
-      const res = await fetch("/api/images", {
+      const res = await apiFetch("/api/images", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: uploadFormData,
@@ -819,6 +822,10 @@ export default function UniversalProfile() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-8">
+          <ActivityHeatmap />
         </div>
 
         {/* Tabs */}
