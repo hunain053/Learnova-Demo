@@ -11,20 +11,27 @@ export const GET = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  const requestedUserId = searchParams.get("userId");
   const month = searchParams.get("month");
 
-  if (!userId || !month) {
+  // Derive target user from token; only allow explicit userId for admin/teacher roles
+  let targetUserId;
+  if (requestedUserId && requestedUserId !== decodedToken.uid) {
+    const role = decodedToken.role;
+    if (role !== "admin" && role !== "teacher") {
+      throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
+    }
+    targetUserId = requestedUserId;
+  } else {
+    targetUserId = decodedToken.uid;
+  }
+
+  if (!month) {
     return success({ attendance: [] });
   }
 
-  // 2. Ensure they are only querying attendance data for their own UID!
-  if (decodedToken.uid !== userId) {
-    throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
-  }
-
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`attendance_heatmap_${ip}_${userId}`);
+  const rateLimitResult = await checkRateLimit(`attendance_heatmap_${ip}_${targetUserId}`);
   if (!rateLimitResult.allowed) {
     return fail(429, "TOO_MANY_REQUESTS", "Too many requests. Please slow down.");
   }
@@ -38,7 +45,7 @@ export const GET = withErrorHandler(async (request) => {
   const firestoreDb = getFirestore();
   const snapshot = await firestoreDb
     .collection("attendance_records")
-    .where("userId", "==", userId)
+    .where("userId", "==", targetUserId)
     .where("date", ">=", firstDayStr)
     .where("date", "<=", lastDayStr)
     .get();

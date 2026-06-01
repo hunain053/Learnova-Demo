@@ -220,8 +220,6 @@ const DashboardHeader = ({ user, currentTime, getInitials }) => (
 
 const StudentDashboard = () => {
   const { user } = useAuth();
-  const [skillPath, setSkillPath] = useState("standard");
-  const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(true);
 
   const { recentActivity, gamificationData } = useAttendance({ role: "student", user });
   const { curriculum } = useCurriculum({ role: "student", user });
