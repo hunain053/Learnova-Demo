@@ -68,32 +68,17 @@ function buildPageCsp() {
 // This eliminates 100-300ms latency per request and removes the dependency
 // on Google's API availability.
 
-let cachedPublicKey = null;
-let publicKeyFetchTime = 0;
-const PUBLIC_KEY_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-/**
- * Fetches the Firebase public keys for JWT verification.
- * Caches the keys for 1 hour to avoid repeated HTTP calls.
- * Falls back to the identitytoolkit endpoint if key fetching fails.
- */
 async function getFirebasePublicKeys() {
-  const now = Date.now();
-  if (cachedPublicKey && now - publicKeyFetchTime < PUBLIC_KEY_CACHE_TTL_MS) {
-    return cachedPublicKey;
-  }
-
   try {
     const response = await fetch(
-      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+      { next: { revalidate: 3600 } } // Cache for 1 hour using Next.js Data Cache
     );
     if (!response.ok) throw new Error("Failed to fetch public keys");
-    const data = await response.json();
-    cachedPublicKey = data;
-    publicKeyFetchTime = now;
-    return data;
-  } catch {
-    return cachedPublicKey;
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch Firebase public keys:", error);
+    return null;
   }
 }
 
