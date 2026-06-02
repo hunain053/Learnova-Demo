@@ -339,6 +339,7 @@ export const POST =
       const sagaResult = await executeSaga({
         operationType: "register",
         uid: decodedToken.uid,
+        idempotencyKey: sagaKey,
         steps: [
           {
             name: "upload_blob",

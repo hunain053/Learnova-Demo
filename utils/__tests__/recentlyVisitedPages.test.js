@@ -27,6 +27,7 @@ describe("recentlyVisitedPages", () => {
     Object.defineProperty(window, "localStorage", {
       value: createLocalStorageMock(),
       writable: true,
+      configurable: true,
     });
     window.localStorage.clear();
   });
@@ -58,6 +59,15 @@ describe("recentlyVisitedPages", () => {
     expect(list.length).toBeGreaterThan(0);
     expect(list[0].path).toBe("/contact");
     expect(typeof list[0].timestamp).toBe("number");
+  });
+
+  it("normalizes trailing slashes so /contact and /contact/ are the same", () => {
+    addRecentlyVisitedPage({ path: "/contact/", name: "Contact" });
+    addRecentlyVisitedPage({ path: "/contact", name: "Contact" });
+
+    const list = getRecentlyVisitedPages();
+    expect(list.length).toBe(1);
+    expect(list[0].path).toBe("/contact");
   });
 
   it("clears stored pages", () => {

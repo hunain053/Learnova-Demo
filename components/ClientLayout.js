@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import { normalizeStreakCount } from "@/lib/streakUtils";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
@@ -27,12 +28,6 @@ const modalInitialState = {
   isShortcutsOpen: false,
   isSearchOpen: false,
 };
-
-function normalizeStreakCount(value) {
-  const n = Number(value || 0);
-  if (!Number.isFinite(n) || Number.isNaN(n)) return 0;
-  return Math.max(0, Math.floor(n));
-}
 
 function modalReducer(state, action) {
   switch (action.type) {
@@ -203,8 +198,7 @@ export default function ClientLayout({ children }) {
         }
         if (!Array.isArray(clientHistory)) clientHistory = [];
 
-        let firestoreStreak = normalizeStreakCount(userProfile?.siteStreak);
-        // 2. Fetch Firestore profile variables
+        const firestoreStreak = normalizeStreakCount(userProfile?.siteStreak) ?? 0;
         const firestoreLastVisit = userProfile?.siteLastVisit || "";
         const firestoreHistory = userProfile?.siteVisitHistory || [];
 

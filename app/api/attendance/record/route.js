@@ -40,7 +40,7 @@ export const POST = withErrorHandler(async (request) => {
   // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
   const parsedConfidence = Number(confidenceScore);
   if (parsedConfidence < 60) {
-    return jsonError("Bad Request: Confidence score too low", 400);
+    return jsonError("Bad Request: Invalid or spoofed confidence score", 400);
   }
 
   // Normalize confidence score to 0-1 range for consistency across the DB and dashboards

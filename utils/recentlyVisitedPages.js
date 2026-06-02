@@ -1,18 +1,10 @@
 import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
+import { normalizePath } from "@/lib/navigation";
 
 const STORAGE_KEY = "learnova_recently_visited_pages";
 const MAX_RECENT_PAGES = 5;
 
 const FALLBACK_PAGE_NAME = "Untitled Page";
-
-function normalizePath(path) {
-  if (typeof path !== "string") return "";
-  const trimmed = path.trim();
-  if (!trimmed) return "";
-  // Strip query string and hash to normalize paths like `/page?x=1` or `/page#anchor`
-  const base = trimmed.split(/[?#]/)[0];
-  return base.startsWith("/") ? base : `/${base}`;
-}
 
 function normalizeName(name, path) {
   if (typeof name === "string" && name.trim()) {
@@ -43,7 +35,7 @@ function sanitizeEntries(entries) {
         timestamp:
           typeof entry?.timestamp === "number" && Number.isFinite(entry.timestamp)
             ? entry.timestamp
-            : Date.now(),
+            : 0,
       };
     })
     .filter(Boolean);

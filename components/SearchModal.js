@@ -47,18 +47,19 @@ export default function SearchModal({ isOpen, onClose }) {
     });
   }, [isAuthenticated, userProfile?.role]);
 
-  
+  const normalizedQuery = debouncedQuery.trim().toLowerCase();
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
 
-      const matchesSearch = !debouncedQuery.trim() || 
-        item.label.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-        item.category.toLowerCase().includes(debouncedQuery.toLowerCase());
+      const matchesSearch =
+        !normalizedQuery ||
+        item.label.toLowerCase().includes(normalizedQuery) ||
+        item.category.toLowerCase().includes(normalizedQuery);
 
       return matchesCategory && matchesSearch;
     });
-  }, [debouncedQuery, selectedCategory, items]);
+  }, [normalizedQuery, selectedCategory, items]);
 
   // Reset selected index when query changes
   useEffect(() => {
