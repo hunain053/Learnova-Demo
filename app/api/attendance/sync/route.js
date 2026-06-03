@@ -225,6 +225,7 @@ async function handleSync(request) {
           execute: async () => {
             await awardXp(decodedToken.uid, "attendance_marked", {
               attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
+              attendanceDate: new Date(record.queuedAt),
             });
           },
           compensate: null, // XP is a side-effect; failure doesn't block attendance
