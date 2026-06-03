@@ -113,10 +113,7 @@ export const POST = withErrorHandler(async (request) => {
       },
       {
         name: "write_mongodb_attendance",
-        execute: async (ctx) => {
-          if (ctx._alreadyRecorded) {
-            return;
-          }
+        execute: async () => {
           const mongoDB = await connectDb();
           await mongoDB.collection("attendance").updateOne(
             { userId, date: normalizedDate },
@@ -143,11 +140,7 @@ export const POST = withErrorHandler(async (request) => {
       },
       {
         name: "award_xp",
-        execute: async (ctx) => {
-          if (ctx._alreadyRecorded) {
-            // Don't award XP if attendance was already recorded
-            return;
-          }
+        execute: async () => {
           await awardXp(userId, "attendance_marked", {
             attendanceHour: new Date().getHours(),
           });
