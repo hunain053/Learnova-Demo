@@ -18,8 +18,9 @@ function FooterLink({ href, children, external = false }) {
   return (
     <motion.li whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
       <LinkComponent href={href} {...externalProps} className="group flex items-center gap-2 text-sm text-slate-300 transition-colors duration-200 ease-out hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm">
-        <span className="relative">
+        <span className="relative inline-flex items-center">
           {children}
+          {external && <ExternalLink size={14} className="ml-1 inline shrink-0" />}
           <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-purple-400 to-blue-400 transition-all duration-300 group-hover:w-full" />
         </span>
         <ArrowUpRight size={12} className="opacity-0 transition-all duration-300 group-hover:opacity-100 sm:opacity-100" />
@@ -75,6 +76,8 @@ export default function Footer() {
     { label: "Contributors", href: "/contributors" },
     { label: "Terms & Conditions", href: "/terms" },
     { label: "Streaks", href: "/streaks" },
+    { label: "GitHub Codebase", href: "https://github.com/Premshaw23/Learnova", external: true },
+    { label: "Discord Server", href: "https://discord.gg/", external: true },
   ];
 
   const sectionLinks = [
@@ -147,7 +150,11 @@ export default function Footer() {
           <div className="space-y-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">Quick Links</h3>
             <ul className="space-y-3">
-              {quickLinks.map((link) => <FooterLink key={link.href} href={link.href}>{link.label}</FooterLink>)}
+              {quickLinks.map((link) => (
+                <FooterLink key={link.href} href={link.href} external={link.external}>
+                  {link.label}
+                </FooterLink>
+              ))}
               <li onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"))} className="col-span-2 cursor-pointer group flex items-center gap-2 text-sm text-slate-300 hover:text-white">
                 <Keyboard className="h-4 w-4 text-fuchsia-200" /> Keyboard Shortcuts
               </li>
