@@ -243,10 +243,6 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
 
-  // NOTE: CSRF validation applies only for cookie-authenticated requests.
-  // Requests authenticated via Authorization: Bearer <token> are not CSRF-vulnerable.
-  // Defer CSRF validation until after token extraction/verification below.
-
   const requestHeaders = new Headers(request.headers);
 
   let authToken = null;
@@ -271,8 +267,7 @@ export async function middleware(request) {
     }
   }
 
-  const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-  if (pathname.startsWith("/api/") && isUnsafeMethod && tokenFromCookie) {
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
     try {
       validateCsrfOriginAndReferer(request);
       validateCsrfRequest(request);
