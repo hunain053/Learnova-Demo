@@ -178,19 +178,6 @@ export default function AboutPage() {
 
           {/* STATS */}
           <section className="mb-24">
-            <div className="mb-10 text-center">
-              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-blue-600 dark:text-blue-400">
-                Measurable impact
-              </p>
-              <h2 className="mt-3 text-4xl font-bold text-slate-950 dark:text-white">
-                Stats That Feel Alive
-              </h2>
-              <p className="mx-auto mt-4 max-w-3xl text-muted-foreground">
-                These numbers now count up as they scroll into view, making the
-                platform’s value feel more dynamic, credible, and premium.
-              </p>
-            </div>
-
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
               {stats.map((stat) => (
                 <AnimatedStatCard key={stat.label} {...stat} />
