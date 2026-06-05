@@ -37,8 +37,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-let redisClient;
-
 function getRedis() {
   if (!redisClient) {
     redisClient = new Redis({
@@ -50,7 +48,7 @@ function getRedis() {
 }
 
 // Dev-only in-memory fallback (never used in production)
-const devRateLimitMap = new Map();
+export const devRateLimitMap = new Map();
 
 const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/login",
@@ -68,11 +66,11 @@ const PUBLIC_API_PATHS = [
   "/api/health",
 ];
 
-function isAuthRoute(pathname) {
+export function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
 }
 
-async function rateLimit(ip, pathname, request) {
+export async function rateLimit(ip, pathname, request) {
   const cookies = typeof request.cookies?.get === "function" ? request.cookies : { get: () => undefined };
   const sessionFingerprint = cookies.get("__Secure-next-auth.session-token")?.value
     || cookies.get("next-auth.session-token")?.value
@@ -135,7 +133,7 @@ async function rateLimit(ip, pathname, request) {
 // This runs on every middleware invocation but only cleans every 5 minutes
 let lastCleanupTime = 0;
 
-function cleanupRateLimitMap() {
+export function cleanupRateLimitMap() {
   try {
     const now = Date.now();
 
@@ -437,7 +435,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
@@ -625,11 +622,8 @@ export async function middleware(request) {
   return response;
 }
 
-// Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
-
 // Test helper to control cleanup timer
-function resetForTest(now) {
+export function resetForTest(now) {
   lastCleanupTime = now;
 }
 

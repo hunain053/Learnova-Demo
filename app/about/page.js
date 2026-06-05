@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/Navbar";
+import AnimatedStatCard from "@/components/AnimatedStatCard";
 import {
   BookOpen,
   ShieldCheck,
@@ -10,6 +11,10 @@ import {
   Smartphone,
   Settings,
   Star,
+  BadgeCheck,
+  Clock3,
+  Sparkles,
+  Users,
 } from "lucide-react";
 
 const features = [
@@ -102,6 +107,49 @@ const reviews = [
   },
 ];
 
+const stats = [
+  {
+    iconKey: "clock",
+    value: 1,
+    suffix: "hr+",
+    label: "Saved Daily For Teachers",
+    description:
+      "Automation trims repetitive admin work so educators can spend more time teaching and supporting students.",
+    accentClass: "from-blue-500 to-cyan-500",
+    iconTone: "text-blue-600",
+  },
+  {
+    iconKey: "sparkles",
+    value: 90,
+    suffix: "+",
+    label: "Productive Hours Recovered Annually",
+    description:
+      "Less manual coordination means more time for planning, mentorship, and meaningful classroom engagement.",
+    accentClass: "from-violet-500 to-fuchsia-500",
+    iconTone: "text-violet-600",
+  },
+  {
+    iconKey: "badge-check",
+    value: 100,
+    suffix: "%",
+    label: "Real-Time Attendance Visibility",
+    description:
+      "Instant, reliable attendance insights keep every stakeholder aligned with current student presence data.",
+    accentClass: "from-emerald-500 to-lime-500",
+    iconTone: "text-emerald-600",
+  },
+  {
+    iconKey: "users",
+    value: 24,
+    suffix: "/7",
+    label: "Smart Learning Support",
+    description:
+      "Students and families can access guidance, updates, and platform support whenever they need it.",
+    accentClass: "from-orange-500 to-amber-500",
+    iconTone: "text-orange-500",
+  },
+];
+
 export default function AboutPage() {
   return (
     <>
@@ -129,33 +177,24 @@ export default function AboutPage() {
           </section>
 
           {/* STATS */}
-          <section className="grid md:grid-cols-4 gap-6 mb-24">
-            <div className="rounded-3xl border p-6 text-center shadow-sm hover:shadow-xl transition-all">
-              <h3 className="text-4xl font-bold text-blue-600">1hr+</h3>
-              <p className="mt-2 text-muted-foreground">
-                Saved Daily For Teachers
+          <section className="mb-24">
+            <div className="mb-10 text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-blue-600 dark:text-blue-400">
+                Measurable impact
+              </p>
+              <h2 className="mt-3 text-4xl font-bold text-slate-950 dark:text-white">
+                Stats That Feel Alive
+              </h2>
+              <p className="mx-auto mt-4 max-w-3xl text-muted-foreground">
+                These numbers now count up as they scroll into view, making the
+                platform’s value feel more dynamic, credible, and premium.
               </p>
             </div>
 
-            <div className="rounded-3xl border p-6 text-center shadow-sm hover:shadow-xl transition-all">
-              <h3 className="text-4xl font-bold text-violet-600">90+</h3>
-              <p className="mt-2 text-muted-foreground">
-                Productive Hours Recovered Annually
-              </p>
-            </div>
-
-            <div className="rounded-3xl border p-6 text-center shadow-sm hover:shadow-xl transition-all">
-              <h3 className="text-4xl font-bold text-green-600">100%</h3>
-              <p className="mt-2 text-muted-foreground">
-                Real-Time Attendance Visibility
-              </p>
-            </div>
-
-            <div className="rounded-3xl border p-6 text-center shadow-sm hover:shadow-xl transition-all">
-              <h3 className="text-4xl font-bold text-orange-500">24/7</h3>
-              <p className="mt-2 text-muted-foreground">
-                Smart Learning Support
-              </p>
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {stats.map((stat) => (
+                <AnimatedStatCard key={stat.label} {...stat} />
+              ))}
             </div>
           </section>
 

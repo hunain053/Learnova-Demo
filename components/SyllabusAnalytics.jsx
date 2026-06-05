@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+"use client";
 
+import React, { useState } from "react";
 const MOCK_SYLLABUS_TRACKS = {
   courseTitle: "Full-Stack Security Engineering",
   overallCompletion: 68,

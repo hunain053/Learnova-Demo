@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 
 const MOCK_ANALYTICS_DATA = {
@@ -27,7 +29,7 @@ const LearningStreakDashboard = () => {
       {/* Analytics Hero Deck */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Core Streak Widget */}
-        <div className="bg-gradient-to-br from-orange-500 to-amber-500 p-6 rounded-2xl shadow-sm text-white">
+        <div className="bg-linear-to-br from-orange-500 to-amber-500 p-6 rounded-2xl shadow-sm text-white">
           <span className="text-[10px] font-black tracking-widest uppercase opacity-75">Active Progress</span>
           <h3 className="text-3xl font-black mt-1">🔥 {MOCK_ANALYTICS_DATA.currentStreak} Days</h3>
           <p className="text-xs mt-2 opacity-90">Current learning streak sequence locked in.</p>
@@ -70,7 +72,7 @@ const LearningStreakDashboard = () => {
           </h4>
           <span className="text-xs text-indigo-600 font-bold">{showInsights ? 'Hide Details' : 'Expand'}</span>
         </div>
-        
+
         {showInsights && (
           <ul className="mt-4 space-y-3 text-xs text-indigo-950/80 font-medium list-disc list-inside">
             {MOCK_ANALYTICS_DATA.suggestions.map((tip, idx) => (

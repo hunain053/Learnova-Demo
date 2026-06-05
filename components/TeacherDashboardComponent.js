@@ -64,14 +64,19 @@ import {
   XCircle,
 } from "lucide-react";
 import ExportDropdown from "@/components/ui/ExportDropdown";
-import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
+// import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import { exportAttendancePDF } from "@/utils/pdf/attendanceReport";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
-
+import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
+import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
+import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useCurriculum } from "@/hooks/useCurriculum";
+import { apiFetch } from "@/lib/apiClient";
 import { db } from "@/lib/firebaseConfig";
 
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
@@ -117,15 +122,6 @@ const exportToPDF = (data) => {
   printWindow.document.close();
   printWindow.print();
 };
-const TeacherDashboard = () => {
-
-import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
-import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
-import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
-import { useAttendance } from "@/hooks/useAttendance";
-import { useCurriculum } from "@/hooks/useCurriculum";
-import { apiFetch } from "@/lib/apiClient";
-
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),

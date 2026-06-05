@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -70,9 +70,9 @@ export default function FaceRecognizer({ authUser }) {
     return stopAllMedia;
   }, [stopAllMedia]);
 
-  const [isOffline, setIsOffline] = useState(
-    typeof window !== "undefined" ? !navigator.onLine : false
-  );
+  // const [isOffline, setIsOffline] = useState(
+  //   typeof window !== "undefined" ? !navigator.onLine : false
+  // );
 
   const MODEL_URL = "/models";
   const labels = fetchedLabels;

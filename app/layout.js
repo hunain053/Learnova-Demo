@@ -4,7 +4,7 @@ import SyllabusAnalytics from '../components/SyllabusAnalytics';
 import LearningStreakDashboard from '../components/LearningStreakDashboard';
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { FirestoreProvider } from "@/contexts/FirestoreContext";
-x
+
 // ─── Next.js core & React ────────────────────────────────────────────────────
 
 import React from "react";
@@ -324,8 +324,8 @@ export default function RootLayout({ children }) {
         {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
 
         <AllProviders>
-          {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
-              are actually imported and exported correctly in AllProviders 
+          {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.)
+              are actually imported and exported correctly in AllProviders
               or placed here individually if AllProviders doesn't cover them. */}
 
           <ScrollProgress />
