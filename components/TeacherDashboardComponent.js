@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { Navbar } from "./Navbar";
+import { dashboardContentOffsetClass } from "@/components/navigation";
 import Image from "next/image";
 import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
@@ -80,6 +81,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { db } from "@/lib/firebaseConfig";
 
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+<<<<<<< HEAD
 const exportToCSV = (data) => {
   const headers = ["Name", "Roll No", "Status", "Time", "Confidence"];
   const rows = data.map((s) => [s.name, s.rollNo, s.status, s.time, s.confidence + "%"]);
@@ -122,6 +124,17 @@ const exportToPDF = (data) => {
   printWindow.document.close();
   printWindow.print();
 };
+=======
+
+import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
+import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
+import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useCurriculum } from "@/hooks/useCurriculum";
+import { apiFetch } from "@/lib/apiClient";
+import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
+import { auth } from "@/lib/firebaseConfig";
+>>>>>>> upstream/master
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -130,6 +143,11 @@ const AttendanceTrendsChart = dynamic(
 const EngagementChart = dynamic(
   () => import("@/components/charts/EngagementChart"),
   { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+);
+
+const TeacherAchievementPanel = dynamic(
+  () => import("@/components/achievements/TeacherAchievementPanel"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
 const TeacherDashboard = () => {
@@ -181,6 +199,49 @@ const TeacherDashboard = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const isInitialFetchRef = useRef(true);
+
+  // Background Sync Effect
+  useEffect(() => {
+    const handleOnlineSync = async () => {
+      if (!user) return;
+      const count = await getPendingRecordsCount();
+      if (count === 0) return;
+
+      toast.loading(`Syncing ${count} offline attendance records...`, { id: 'offline-sync' });
+      
+      const token = await user.getIdToken();
+      const result = await syncOfflineQueue(async (record) => {
+        try {
+          const res = await fetch("/api/attendance/record", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(record),
+          });
+          return res.ok;
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (result.success) {
+        toast.success(`Successfully synced ${result.synced} records`, { id: 'offline-sync' });
+      } else {
+        toast.error(`Failed to sync ${result.failed} records`, { id: 'offline-sync' });
+      }
+    };
+
+    window.addEventListener("online", handleOnlineSync);
+    
+    // Attempt sync on mount if online
+    if (navigator.onLine && user) {
+      handleOnlineSync();
+    }
+
+    return () => window.removeEventListener("online", handleOnlineSync);
+  }, [user]);
 
   const handleExport = (format) => {
     setIsExporting(true);
@@ -636,44 +697,6 @@ const TeacherDashboard = () => {
     toast.success("Passcode copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
-  const handleExportCSV = () => {
-    if (!studentAttendanceData || studentAttendanceData.length === 0) {
-      toast.error("No attendance records found to export.");
-      return;
-    }
-
-    const headers = ["Student ID", "Student Name", "Date", "Attendance Status"];
-    const todayDate = new Date().toISOString().slice(0, 10);
-
-    const csvRows = studentAttendanceData.map((student) => {
-      const studentId = student.rollNo || student.id || "N/A";
-      const studentName = student.name || "Unknown";
-      const status = student.status || "absent";
-
-      return [
-        `"${studentId}"`,
-        `"${studentName.replace(/"/g, '""')}"`,
-        `"${todayDate}"`,
-        `"${status.toUpperCase()}"`,
-      ].join(",");
-    });
-
-    const csvContent = [headers.join(","), ...csvRows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const fileName = `attendance_report_${todayDate}.csv`;
-
-    const link = document.createElement("a");
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", fileName);
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success(`Exported data successfully to ${fileName}`);
-    }
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -1019,7 +1042,7 @@ const TeacherDashboard = () => {
               </button>
 
               <button
-                onClick={handleExportCSV}
+                onClick={() => handleExport('csv')}
                 className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
                aria-label="Action button">
                 <div className="flex items-center space-x-3">
@@ -1187,7 +1210,7 @@ const TeacherDashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className={`min-h-screen bg-background relative overflow-hidden ${dashboardContentOffsetClass}`}>
       {/* Premium Navbar */}
       <Navbar />
       {/* Animated Gradient Backgrounds */}
@@ -1295,7 +1318,7 @@ const TeacherDashboard = () => {
                   </button>
                 )}
                 <button
-                  onClick={handleExportCSV}
+                  onClick={() => handleExport('csv')}
                   className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
                  aria-label="Action button">
                   <Download className="w-3 h-3" />
@@ -1319,6 +1342,7 @@ const TeacherDashboard = () => {
           {[
             { id: "dashboard", label: "Dashboard", icon: BarChart3 },
             { id: "curriculum", label: "Curriculum", icon: BookOpen },
+            { id: "achievements", label: "Achievements", icon: Award },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
             { id: "schedule", label: "Schedule", icon: Calendar },
           ].map((tab) => (
@@ -1359,6 +1383,7 @@ const TeacherDashboard = () => {
       <div className="relative z-10 container mx-auto px-6 py-8">
         {activeTab === "dashboard" && renderDashboard()}
         {activeTab === "curriculum" && <CurriculumBuilder />}
+        {activeTab === "achievements" && <TeacherAchievementPanel />}
         {activeTab === "analytics" && renderAnalytics()}
         {activeTab === "schedule" && renderSchedule()}
       </div>

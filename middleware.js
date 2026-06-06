@@ -65,6 +65,7 @@ const PUBLIC_API_PATHS = [
   "/api/auth/reset-password",
   "/api/health",
 ];
+<<<<<<< HEAD
 
 export function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
@@ -153,6 +154,9 @@ export function cleanupRateLimitMap() {
   }
 }
 
+=======
+const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
+>>>>>>> upstream/master
 // ─── CSP ──────────────────────────────────────────────────────────────────────
 
 function buildPageCsp() {
@@ -375,6 +379,9 @@ async function verifyIdToken(token) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    return NextResponse.next();
+  }
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
 
   // Clean up expired rate limit entries periodically
@@ -383,6 +390,16 @@ export async function middleware(request) {
   // NOTE: CSRF validation applies only for cookie-authenticated requests.
   // Requests authenticated via Authorization: Bearer <token> are not CSRF-vulnerable.
   // Defer CSRF validation until after token extraction/verification below.
+
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+    const contentLength = Number(request.headers.get("content-length"));
+    if (!Number.isNaN(contentLength) && contentLength > 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Payload too large (limit 1MB)" },
+        { status: 413 }
+      );
+    }
+  }
 
   // ── 1. Rate limiting for auth API routes ──
   if (isAuthRoute(pathname)) {
